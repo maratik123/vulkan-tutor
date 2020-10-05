@@ -636,7 +636,7 @@ vk::UniqueCommandPool HelloTriangle::createCommandPool() const {
 }
 
 std::vector<vk::UniqueCommandBuffer> HelloTriangle::createCommandBuffers() const {
-    std::vector<vk::UniqueCommandBuffer> commandBuffers_ =
+    auto commandBuffers_ =
             logicalDevice->allocateCommandBuffersUnique(vk::CommandBufferAllocateInfo(
                     *commandPool,
                     vk::CommandBufferLevel::ePrimary,
@@ -672,7 +672,7 @@ std::vector<vk::UniqueCommandBuffer> HelloTriangle::createCommandBuffers() const
         commandBuffer->end();
     }
 
-    return std::move(commandBuffers_);
+    return commandBuffers_;
 }
 
 void HelloTriangle::drawFrame() {
