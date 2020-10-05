@@ -27,6 +27,11 @@ struct SwapChain {
     vk::Extent2D extent{};
 };
 
+struct VertexBufferWithMemory {
+    vk::UniqueDeviceMemory vertexBufferMemory{};
+    vk::UniqueBuffer vertexBuffer{};
+};
+
 class HelloTriangle {
 public:
     HelloTriangle();
@@ -74,6 +79,10 @@ private:
     void drawFrame();
     [[nodiscard]] vk::Extent2D chooseSwapExtent(const vk::SurfaceCapabilitiesKHR &capabilities) const;
     static void framebufferResizeCallback(void* userPointer, int width, int height);
+    [[nodiscard]] vk::UniqueBuffer createVertexBuffer() const;
+    [[nodiscard]] vk::UniqueDeviceMemory allocateVertexBufferMemory(const vk::Buffer &vertexBuffer) const;
+    [[nodiscard]] VertexBufferWithMemory createBufferWithMemory() const;
+    [[nodiscard]] uint32_t findMemoryType(uint32_t typeFilter, vk::MemoryPropertyFlags properties) const;
 
     GLFWWindow window;
     vk::UniqueInstance instance;
@@ -94,6 +103,7 @@ private:
     vk::UniquePipeline graphicsPipeline;
     std::vector<vk::UniqueFramebuffer> swapChainFramebuffers;
     vk::UniqueCommandPool commandPool;
+    VertexBufferWithMemory vertexBufferWithMemory;
     std::vector<vk::UniqueCommandBuffer> commandBuffers;
     std::array<vk::UniqueSemaphore, maxFramesInFlight> imageAvailableSemaphore;
     std::array<vk::UniqueSemaphore, maxFramesInFlight> renderFinishedSemaphore;

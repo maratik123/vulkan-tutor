@@ -2,8 +2,8 @@
 
 #define GLM_FORCE_RADIANS
 #define GLM_FORCE_DEPTH_ZERO_TO_ONE
-#include <glm/vec4.hpp>
-#include <glm/mat4x4.hpp>
+#include <glm/vec3.hpp>
+#include <glm/vec2.hpp>
 
 #include <vector>
 #include <iostream>
@@ -16,8 +16,45 @@
 #include "utils.h"
 
 namespace {
+    struct Vertex {
+        glm::vec2 pos;
+        glm::vec3 color;
+
+        static constexpr vk::VertexInputBindingDescription bindingDescription() {
+            return {
+                0,
+                sizeof(Vertex),
+                vk::VertexInputRate::eVertex
+            };
+        }
+
+        static constexpr std::array<vk::VertexInputAttributeDescription, 2> getAttributeDescriptions() {
+            return {{
+                            {
+                                    0,
+                                    0,
+                                    vk::Format::eR32G32Sfloat,
+                                    offsetof(Vertex, pos)
+                            },
+                            {
+                                    1,
+                                    0,
+                                    vk::Format::eR32G32B32Sfloat,
+                                    offsetof(Vertex, color)
+                            }
+                    }};
+        }
+    };
+
     constexpr std::array<const char *, 1> validationLayers {"VK_LAYER_KHRONOS_validation"};
     constexpr std::array<const char *, 1> deviceExtensions {VK_KHR_SWAPCHAIN_EXTENSION_NAME};
+    constexpr std::array<Vertex, 3> vertices {{
+            {{0.0f, -0.5f}, {1.0f, 0.0f, 0.0f}},
+            {{0.5f, 0.5f}, {0.0f, 1.0f, 0.0f}},
+            {{-0.5f, 0.5f}, {0.0f, 0.0f, 1.0f}}
+    }};
+
+    constexpr uint64_t verticesSize = sizeof(decltype(vertices)::value_type) * vertices.size();
 
     constexpr std::array<vk::PhysicalDeviceType, 3> suitableDeviceTypesInPriority {
             vk::PhysicalDeviceType::eDiscreteGpu,
@@ -26,8 +63,8 @@ namespace {
     };
 
     void checkValidationLayerSupport() {
-        const auto &availableLayers = vk::enumerateInstanceLayerProperties();
-        for (const auto &validationLayer : validationLayers) {
+        const auto availableLayers = vk::enumerateInstanceLayerProperties();
+        for (const auto validationLayer : validationLayers) {
             if (std::none_of(
                     availableLayers.cbegin(), availableLayers.cend(),
                     [&validationLayer](const auto &availableLayer) {
@@ -39,8 +76,8 @@ namespace {
     }
 
     void checkExtensions(const std::vector<const char *> &requiredExtensions) {
-        const auto &availableExtensions = vk::enumerateInstanceExtensionProperties();
-        for (const auto &requiredExtension : requiredExtensions) {
+        const auto availableExtensions = vk::enumerateInstanceExtensionProperties();
+        for (const auto requiredExtension : requiredExtensions) {
             if (std::none_of(
                     availableExtensions.cbegin(), availableExtensions.cend(),
                     [&requiredExtension](const auto &availableExtension) {
@@ -52,7 +89,7 @@ namespace {
     }
 
     bool checkDeviceExtensionSupport(const vk::PhysicalDevice &device) {
-        const auto &availableExtensions = device.enumerateDeviceExtensionProperties();
+        const auto availableExtensions = device.enumerateDeviceExtensionProperties();
 
         return std::all_of(
                 deviceExtensions.cbegin(), deviceExtensions.cend(),
@@ -70,7 +107,7 @@ namespace {
             | vk::DebugUtilsMessageTypeFlagBitsEXT::eValidation;
 
     constexpr bool filterLog(vk::DebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
-                   const vk::DebugUtilsMessageTypeFlagsEXT &messageType) {
+                   const vk::DebugUtilsMessageTypeFlagsEXT messageType) {
         if (messageSeverity != vk::DebugUtilsMessageSeverityFlagBitsEXT::eVerbose) {
             return true;
         }
@@ -79,7 +116,7 @@ namespace {
 
     void debugCallback(
             vk::DebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
-            const vk::DebugUtilsMessageTypeFlagsEXT &messageType,
+            const vk::DebugUtilsMessageTypeFlagsEXT messageType,
             const vk::DebugUtilsMessengerCallbackDataEXT &callbackData) {
         if (filterLog(messageSeverity, messageType)) {
             std::cerr << print_time << vk::to_string(messageSeverity) << ' '
@@ -129,7 +166,7 @@ namespace {
                 VK_API_VERSION_1_0
         );
 
-        const auto &requiredExtensions = GLFWWindow::requiredExtensions();
+        const auto requiredExtensions = GLFWWindow::requiredExtensions();
         checkExtensions(requiredExtensions);
 
         vk::InstanceCreateInfo createInfo(
@@ -145,24 +182,24 @@ namespace {
             return vk::createInstanceUnique(createInfo);
         }
 
-        const auto &debugInfo = createDebugInfo();
+        const auto debugInfo = createDebugInfo();
         createInfo.pNext = &debugInfo;
         return vk::createInstanceUnique(createInfo);
     }
 
     vk::SurfaceFormatKHR chooseSwapSurfaceFormat(const std::vector<vk::SurfaceFormatKHR> &availableFormats) {
-        const auto &it = std::find_if(availableFormats.cbegin(), availableFormats.cend(),
+        const auto it = std::find_if(availableFormats.cbegin(), availableFormats.cend(),
                                       [](const auto &availableFormat) {
                                           return availableFormat.format == vk::Format::eB8G8R8A8Srgb
                                                  && availableFormat.colorSpace == vk::ColorSpaceKHR::eSrgbNonlinear;
                                       });
-        return it == availableFormats.cend() ? availableFormats.front() : *it;
+        return it != availableFormats.cend() ? *it : availableFormats.front();
     }
 
     vk::PresentModeKHR chooseSwapPresentMode(const std::vector<vk::PresentModeKHR> &availablePresentModes) {
-        const auto &it = std::find(availablePresentModes.cbegin(), availablePresentModes.cend(),
+        const auto it = std::find(availablePresentModes.cbegin(), availablePresentModes.cend(),
                                    vk::PresentModeKHR::eMailbox);
-        return it == availablePresentModes.cend() ? vk::PresentModeKHR::eFifo : vk::PresentModeKHR::eMailbox;
+        return it != availablePresentModes.cend() ? vk::PresentModeKHR::eMailbox : vk::PresentModeKHR::eFifo;
     }
 }
 
@@ -186,6 +223,7 @@ HelloTriangle::HelloTriangle()
           graphicsPipeline(createGraphicsPipeline()),
           swapChainFramebuffers(createFramebuffers()),
           commandPool(createCommandPool()),
+          vertexBufferWithMemory(createBufferWithMemory()),
           commandBuffers(createCommandBuffers()),
           imageAvailableSemaphore({logicalDevice->createSemaphoreUnique({}),
                                    logicalDevice->createSemaphoreUnique({})}),
@@ -207,10 +245,9 @@ SwapChainSupportDetails HelloTriangle::querySwapChainSupport(const vk::PhysicalD
 
 QueueFamilyIndices HelloTriangle::findQueueFamilies(const vk::PhysicalDevice &requestedDevice) const {
     QueueFamilyIndices result{};
-    const auto &queueFamilies = requestedDevice.getQueueFamilyProperties();
+    const auto queueFamilies = requestedDevice.getQueueFamilyProperties();
     for (uint32_t i = 0; i < queueFamilies.size(); ++i) {
-        const auto &queueFamily = queueFamilies[i];
-        if (queueFamily.queueFlags & vk::QueueFlagBits::eGraphics) {
+        if (queueFamilies[i].queueFlags & vk::QueueFlagBits::eGraphics) {
             result.graphicsFamily = i;
         }
 
@@ -239,8 +276,8 @@ bool HelloTriangle::isDeviceSuitable(const vk::PhysicalDevice &requestedDevice,
     if (!checkDeviceExtensionSupport(requestedDevice)) {
         return false;
     }
-    const auto &swapChainSupport = querySwapChainSupport(requestedDevice);
-    return !swapChainSupport.formats.empty() && !swapChainSupport.presentModes.empty();
+    const auto swapChainSupport = querySwapChainSupport(requestedDevice);
+    return !(swapChainSupport.formats.empty() || swapChainSupport.presentModes.empty());
 }
 
 PFN_vkGetInstanceProcAddr HelloTriangle::getVkGetInstanceProcAddr() const {
@@ -263,13 +300,13 @@ void HelloTriangle::run() {
 }
 
 vk::PhysicalDevice HelloTriangle::pickPhysicalDevice() const {
-    const auto &devices = instance->enumeratePhysicalDevices();
+    const auto devices = instance->enumeratePhysicalDevices();
     if (devices.empty()) {
         throw std::runtime_error("failed to find GPUs with Vulkan support!");
     }
 
     for (auto deviceType : suitableDeviceTypesInPriority) {
-        const auto &it = std::find_if(
+        const auto it = std::find_if(
                 devices.cbegin(), devices.cend(),
                 [this, deviceType](const auto &device) { return isDeviceSuitable(device, deviceType); }
         );
@@ -319,11 +356,11 @@ vk::UniqueDevice HelloTriangle::createLogicalDevice() const {
 }
 
 SwapChain HelloTriangle::createSwapChain() const {
-    const auto &swapChainSupport = querySwapChainSupport();
+    const auto swapChainSupport = querySwapChainSupport();
 
-    const auto &surfaceFormat = chooseSwapSurfaceFormat(swapChainSupport.formats);
-    const auto &presentMode = chooseSwapPresentMode(swapChainSupport.presentModes);
-    const auto &extent = chooseSwapExtent(swapChainSupport.capabilities);
+    const auto surfaceFormat = chooseSwapSurfaceFormat(swapChainSupport.formats);
+    const auto presentMode = chooseSwapPresentMode(swapChainSupport.presentModes);
+    const auto extent = chooseSwapExtent(swapChainSupport.capabilities);
 
     uint32_t imageCount = swapChainSupport.capabilities.minImageCount + 1;
 
@@ -364,7 +401,7 @@ std::vector<vk::UniqueImageView> HelloTriangle::createSwapChainImageViews() cons
     std::vector<vk::UniqueImageView> result{};
     result.reserve(swapChainImages.size());
 
-    for (const auto &image : swapChainImages) {
+    for (const auto image : swapChainImages) {
         result.emplace_back(logicalDevice->createImageViewUnique(vk::ImageViewCreateInfo(
                     {},
                     image,
@@ -390,8 +427,8 @@ std::vector<vk::UniqueImageView> HelloTriangle::createSwapChainImageViews() cons
 }
 
 vk::UniquePipeline HelloTriangle::createGraphicsPipeline() const {
-    const auto &vertShaderCode = readFile("shaders/shader.vert.spv");
-    const auto &fragShaderCode = readFile("shaders/shader.frag.spv");
+    const auto vertShaderCode = readFile("shaders/shader.vert.spv");
+    const auto fragShaderCode = readFile("shaders/shader.frag.spv");
 
     vk::UniqueShaderModule vertShaderModule = createShaderModule(vertShaderCode);
     vk::UniqueShaderModule fragShaderModule = createShaderModule(fragShaderCode);
@@ -411,12 +448,16 @@ vk::UniquePipeline HelloTriangle::createGraphicsPipeline() const {
     std::array<vk::PipelineShaderStageCreateInfo, 2> shaderStages {
         vertShaderStageCreateInfo, fragShaderStageCreateInfo
     };
+
+    const auto bindingDescription = Vertex::bindingDescription();
+    const auto attributeDescriptions = Vertex::getAttributeDescriptions();
+
     vk::PipelineVertexInputStateCreateInfo vertexInputInfo(
             {},
-            0,
-            nullptr,
-            0,
-            nullptr
+            1,
+            &bindingDescription,
+            attributeDescriptions.size(),
+            attributeDescriptions.data()
     );
     vk::PipelineInputAssemblyStateCreateInfo inputAssembly(
             {},
@@ -595,15 +636,15 @@ vk::UniqueCommandPool HelloTriangle::createCommandPool() const {
 }
 
 std::vector<vk::UniqueCommandBuffer> HelloTriangle::createCommandBuffers() const {
-    std::vector<vk::UniqueCommandBuffer> result =
+    std::vector<vk::UniqueCommandBuffer> commandBuffers_ =
             logicalDevice->allocateCommandBuffersUnique(vk::CommandBufferAllocateInfo(
                     *commandPool,
                     vk::CommandBufferLevel::ePrimary,
                     swapChainFramebuffers.size()
             ));
 
-    for (uint32_t i = 0; i < result.size(); ++i) {
-        const vk::UniqueCommandBuffer &commandBuffer = result[i];
+    for (uint32_t i = 0; i < commandBuffers_.size(); ++i) {
+        const auto &commandBuffer = commandBuffers_[i];
 
         commandBuffer->begin(vk::CommandBufferBeginInfo(
                 {},
@@ -625,12 +666,13 @@ std::vector<vk::UniqueCommandBuffer> HelloTriangle::createCommandBuffers() const
                 &clearColor
         ), vk::SubpassContents::eInline);
         commandBuffer->bindPipeline(vk::PipelineBindPoint::eGraphics, *graphicsPipeline);
-        commandBuffer->draw(3, 1, 0, 0);
+        commandBuffer->bindVertexBuffers(0, {*vertexBufferWithMemory.vertexBuffer}, {0});
+        commandBuffer->draw(vertices.size(), 1, 0, 0);
         commandBuffer->endRenderPass();
         commandBuffer->end();
     }
 
-    return std::move(result);
+    return std::move(commandBuffers_);
 }
 
 void HelloTriangle::drawFrame() {
@@ -693,7 +735,7 @@ void HelloTriangle::cleanupSwapChain() {
 
 void HelloTriangle::recreateSwapChain() {
     while(true) {
-        const auto &extent = window.getFramebufferSize();
+        const auto extent = window.getFramebufferSize();
         if (extent.width != 0 && extent.height != 0) {
             break;
         }
@@ -730,4 +772,50 @@ vk::Extent2D HelloTriangle::chooseSwapExtent(const vk::SurfaceCapabilitiesKHR &c
 void HelloTriangle::framebufferResizeCallback(void* userPointer, int width, int height) {
     auto *_this = reinterpret_cast<HelloTriangle *>(userPointer);
     _this->framebufferResized = true;
+}
+
+vk::UniqueBuffer HelloTriangle::createVertexBuffer() const {
+    return logicalDevice->createBufferUnique(vk::BufferCreateInfo{
+            {},
+            verticesSize,
+            vk::BufferUsageFlagBits::eVertexBuffer,
+            vk::SharingMode::eExclusive
+    });
+}
+
+vk::UniqueDeviceMemory HelloTriangle::allocateVertexBufferMemory(const vk::Buffer &vertexBuffer) const {
+    const auto memRequirements = logicalDevice->getBufferMemoryRequirements(
+            vertexBuffer
+    );
+    auto vertexBufferMemory = logicalDevice->allocateMemoryUnique(vk::MemoryAllocateInfo(
+            memRequirements.size,
+            findMemoryType(memRequirements.memoryTypeBits,
+                           vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent)
+    ));
+    logicalDevice->bindBufferMemory(vertexBuffer, *vertexBufferMemory, 0);
+
+    void *data = logicalDevice->mapMemory(*vertexBufferMemory, 0, verticesSize, {});
+    memcpy(data, vertices.data(), (size_t) verticesSize);
+    logicalDevice->unmapMemory(*vertexBufferMemory);
+
+    return vertexBufferMemory;
+}
+
+uint32_t HelloTriangle::findMemoryType(uint32_t typeFilter, vk::MemoryPropertyFlags properties) const {
+    const auto memProperties = physicalDevice.getMemoryProperties();
+    for (uint32_t i = 0; i < memProperties.memoryTypeCount; ++i) {
+        if ((typeFilter & (1u << i)) && (memProperties.memoryTypes[i].propertyFlags & properties) == properties) {
+            return i;
+        }
+    }
+
+    throw std::runtime_error("failed to find suitable memory type!");
+}
+
+VertexBufferWithMemory HelloTriangle::createBufferWithMemory() const {
+    auto vertexBuffer = createVertexBuffer();
+    return {
+        allocateVertexBufferMemory(*vertexBuffer),
+        std::move(vertexBuffer)
+    };
 }

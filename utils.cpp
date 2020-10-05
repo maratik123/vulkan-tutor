@@ -26,9 +26,7 @@ std::vector<char> readFile(const char *fileName) {
     std::ifstream file(fileName, std::ios::ate | std::ios::binary);
 
     if (!file.is_open()) {
-        std::string err = "Failed to open file: ";
-        err += fileName;
-        throw std::runtime_error(err);
+        throw std::runtime_error(std::string("Failed to open file: ") + fileName);
     }
 
     std::size_t fileSize = static_cast<size_t>(file.tellg());
