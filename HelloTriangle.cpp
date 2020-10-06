@@ -106,7 +106,7 @@ namespace {
             vk::DebugUtilsMessageTypeFlagBitsEXT::ePerformance
             | vk::DebugUtilsMessageTypeFlagBitsEXT::eValidation;
 
-    constexpr bool filterLog(vk::DebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
+    constexpr bool filterLog(const vk::DebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
                    const vk::DebugUtilsMessageTypeFlagsEXT messageType) {
         if (messageSeverity != vk::DebugUtilsMessageSeverityFlagBitsEXT::eVerbose) {
             return true;
@@ -115,7 +115,7 @@ namespace {
     }
 
     void debugCallback(
-            vk::DebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
+            const vk::DebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
             const vk::DebugUtilsMessageTypeFlagsEXT messageType,
             const vk::DebugUtilsMessengerCallbackDataEXT &callbackData) {
         if (filterLog(messageSeverity, messageType)) {

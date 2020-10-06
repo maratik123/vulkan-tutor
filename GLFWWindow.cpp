@@ -25,6 +25,7 @@ GLFWWindow::~GLFWWindow() {
     if (framebufferResizeCallbackFn) {
         glfwSetFramebufferSizeCallback(window, nullptr);
     }
+    glfwSetWindowUserPointer(window, nullptr);
     glfwDestroyWindow(window);
 }
 
