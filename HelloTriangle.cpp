@@ -215,6 +215,7 @@ HelloTriangle::HelloTriangle()
           logicalDevice(createLogicalDevice()),
           graphicsQueue(logicalDevice->getQueue(queueFamilyIndices.graphicsFamily.value(), 0)),
           presentQueue(logicalDevice->getQueue(queueFamilyIndices.presentFamily.value(), 0)),
+
           swapChain(createSwapChain()),
           swapChainImages(getSwapChainImages()),
           swapChainImageViews(createSwapChainImageViews()),
@@ -222,7 +223,8 @@ HelloTriangle::HelloTriangle()
           pipelineLayout(createPipelineLayout()),
           graphicsPipeline(createGraphicsPipeline()),
           swapChainFramebuffers(createFramebuffers()),
-          commandPool(createCommandPool()),
+          commandPool(createCommandPool(queueFamilyIndices.graphicsFamily)),
+          transferCommandPool(createCommandPool(queueFamilyIndices.transferFamily)),
           vertexBufferWithMemory(createBufferWithMemory()),
           commandBuffers(createCommandBuffers()),
           imageAvailableSemaphore({logicalDevice->createSemaphoreUnique({}),
@@ -231,7 +233,9 @@ HelloTriangle::HelloTriangle()
                                    logicalDevice->createSemaphoreUnique({})}),
           inFlightFences({createFence(),
                           createFence()}),
-          imagesInFlight(createImageFenceReferences()) {
+          imagesInFlight(createImageFenceReferences()),
+          currentFrame(0),
+          framebufferResized(false) {
     std::cout << print_time << "Initialized" << std::endl;
 }
 
@@ -249,6 +253,8 @@ QueueFamilyIndices HelloTriangle::findQueueFamilies(const vk::PhysicalDevice &re
     for (uint32_t i = 0; i < queueFamilies.size(); ++i) {
         if (queueFamilies[i].queueFlags & vk::QueueFlagBits::eGraphics) {
             result.graphicsFamily = i;
+        } else if (queueFamilies[i].queueFlags & vk::QueueFlagBits::eTransfer) {
+            result.transferFamily = i;
         }
 
         if (requestedDevice.getSurfaceSupportKHR(i, *surface)) {
@@ -322,17 +328,18 @@ HelloTriangle::~HelloTriangle() {
 }
 
 vk::UniqueDevice HelloTriangle::createLogicalDevice() const {
-    float queuePriority = 1.0;
+    float queuePriority = 1.0f;
 
     std::set<uint32_t> uniqueQueueFamilies{
             queueFamilyIndices.graphicsFamily.value(),
-            queueFamilyIndices.presentFamily.value()
+            queueFamilyIndices.presentFamily.value(),
+            queueFamilyIndices.transferFamily.value()
     };
 
     std::vector<vk::DeviceQueueCreateInfo> queueCreateInfos{};
     queueCreateInfos.reserve(uniqueQueueFamilies.size());
 
-    for (uint32_t queueFamily : uniqueQueueFamilies) {
+    for (const auto queueFamily : uniqueQueueFamilies) {
         queueCreateInfos.emplace_back(vk::DeviceQueueCreateInfo(
                 {},
                 queueFamily,
@@ -368,11 +375,13 @@ SwapChain HelloTriangle::createSwapChain() const {
         imageCount = swapChainSupport.capabilities.maxImageCount;
     }
 
-    const std::array<const uint32_t, 2> queryFamilyIndices{
-            queueFamilyIndices.graphicsFamily.value(), queueFamilyIndices.presentFamily.value()
+    const std::set<uint32_t> queryFamilyIndicesUnique{
+            queueFamilyIndices.graphicsFamily.value(),
+            queueFamilyIndices.presentFamily.value(),
+            queueFamilyIndices.transferFamily.value()
     };
 
-    const bool sameFamily = queueFamilyIndices.graphicsFamily == queueFamilyIndices.presentFamily;
+    const std::vector<uint32_t> queryFamilyIndices(queryFamilyIndicesUnique.cbegin(), queryFamilyIndicesUnique.cend());
 
     return {
             logicalDevice->createSwapchainKHRUnique(vk::SwapchainCreateInfoKHR(
@@ -384,9 +393,9 @@ SwapChain HelloTriangle::createSwapChain() const {
                     extent,
                     1,
                     vk::ImageUsageFlagBits::eColorAttachment,
-                    sameFamily ? vk::SharingMode::eExclusive : vk::SharingMode::eConcurrent,
-                    sameFamily ? 0 : queryFamilyIndices.size(),
-                    sameFamily ? nullptr : queryFamilyIndices.data(),
+                    vk::SharingMode::eConcurrent,
+                    queryFamilyIndices.size(),
+                    queryFamilyIndices.data(),
                     swapChainSupport.capabilities.currentTransform,
                     vk::CompositeAlphaFlagBitsKHR::eOpaque,
                     presentMode,
@@ -628,10 +637,10 @@ std::vector<vk::UniqueFramebuffer> HelloTriangle::createFramebuffers() const {
     return result;
 }
 
-vk::UniqueCommandPool HelloTriangle::createCommandPool() const {
+vk::UniqueCommandPool HelloTriangle::createCommandPool(std::optional<uint32_t> queueFamily) const {
     return logicalDevice->createCommandPoolUnique(vk::CommandPoolCreateInfo(
             {},
-            queueFamilyIndices.graphicsFamily.value()
+            queueFamily.value()
     ));
 }
 

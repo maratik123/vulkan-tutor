@@ -9,9 +9,10 @@
 struct QueueFamilyIndices {
     std::optional<uint32_t> graphicsFamily{};
     std::optional<uint32_t> presentFamily{};
+    std::optional<uint32_t> transferFamily{};
 
     [[nodiscard]] constexpr bool isComplete() const {
-        return graphicsFamily.has_value() && presentFamily.has_value();
+        return graphicsFamily.has_value() && presentFamily.has_value() && transferFamily.has_value();
     }
 };
 
@@ -63,7 +64,7 @@ private:
     [[nodiscard]] vk::UniquePipelineLayout createPipelineLayout() const;
     [[nodiscard]] vk::UniqueRenderPass createRenderPass() const;
     [[nodiscard]] std::vector<vk::UniqueFramebuffer> createFramebuffers() const;
-    [[nodiscard]] vk::UniqueCommandPool createCommandPool() const;
+    [[nodiscard]] vk::UniqueCommandPool createCommandPool(std::optional<uint32_t> queueFamily) const;
     [[nodiscard]] std::vector<vk::UniqueCommandBuffer> createCommandBuffers() const;
     [[nodiscard]] vk::UniqueFence createFence() const {
         return logicalDevice->createFenceUnique(vk::FenceCreateInfo(vk::FenceCreateFlagBits::eSignaled));
@@ -95,6 +96,7 @@ private:
     vk::UniqueDevice logicalDevice;
     vk::Queue graphicsQueue;
     vk::Queue presentQueue;
+    vk::Queue transferQueue;
     SwapChain swapChain;
     std::vector<vk::Image> swapChainImages;
     std::vector<vk::UniqueImageView> swapChainImageViews;
@@ -103,14 +105,15 @@ private:
     vk::UniquePipeline graphicsPipeline;
     std::vector<vk::UniqueFramebuffer> swapChainFramebuffers;
     vk::UniqueCommandPool commandPool;
+    vk::UniqueCommandPool transferCommandPool;
     VertexBufferWithMemory vertexBufferWithMemory;
     std::vector<vk::UniqueCommandBuffer> commandBuffers;
     std::array<vk::UniqueSemaphore, maxFramesInFlight> imageAvailableSemaphore;
     std::array<vk::UniqueSemaphore, maxFramesInFlight> renderFinishedSemaphore;
     std::array<vk::UniqueFence, maxFramesInFlight> inFlightFences;
     std::vector<OptRefUniqueFence> imagesInFlight;
-    size_t currentFrame = 0;
-    bool framebufferResized = false;
+    size_t currentFrame;
+    bool framebufferResized;
 };
 
 #endif //VULKAN_TUTOR_HELLOTRIANGLE_H
