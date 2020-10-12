@@ -81,13 +81,14 @@ private:
     [[nodiscard]] vk::Extent2D chooseSwapExtent(const vk::SurfaceCapabilitiesKHR &capabilities) const;
     static void framebufferResizeCallback(void* userPointer, int width, int height);
     [[nodiscard]] vk::UniqueBuffer createDeviceBuffer(vk::DeviceSize size, vk::BufferUsageFlags usage) const;
-    [[nodiscard]] vk::UniqueDeviceMemory allocateVertexBufferMemory(const vk::Buffer &Buffer,
+    [[nodiscard]] vk::UniqueDeviceMemory allocateVertexBufferMemory(vk::Buffer Buffer,
                                                                     vk::MemoryPropertyFlags properties) const;
     [[nodiscard]] BufferWithMemory createBuffer(vk::DeviceSize size, vk::BufferUsageFlags usage,
                                                 vk::MemoryPropertyFlags properties) const;
     [[nodiscard]] uint32_t findMemoryType(uint32_t typeFilter, vk::MemoryPropertyFlags properties) const;
     [[nodiscard]] BufferWithMemory createVertexBuffer() const;
-    void copyBuffer(vk::Buffer srcBuffer, vk::Buffer dstBuffer, vk::DeviceSize size) const;
+    [[nodiscard]] BufferWithMemory createIndexBuffer() const;
+    void copyBuffer(const BufferWithMemory &srcBuffer, const BufferWithMemory &dstBuffer, vk::DeviceSize size) const;
 
     GLFWWindow window;
     vk::UniqueInstance instance;
@@ -111,6 +112,7 @@ private:
     vk::UniqueCommandPool commandPool;
     vk::UniqueCommandPool transferCommandPool;
     BufferWithMemory vertexBuffer;
+    BufferWithMemory indexBuffer;
     std::vector<vk::UniqueCommandBuffer> commandBuffers;
     std::array<vk::UniqueSemaphore, maxFramesInFlight> imageAvailableSemaphore;
     std::array<vk::UniqueSemaphore, maxFramesInFlight> renderFinishedSemaphore;
