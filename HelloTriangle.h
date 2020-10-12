@@ -28,9 +28,9 @@ struct SwapChain {
     vk::Extent2D extent{};
 };
 
-struct VertexBufferWithMemory {
-    vk::UniqueDeviceMemory vertexBufferMemory{};
-    vk::UniqueBuffer vertexBuffer{};
+struct BufferWithMemory {
+    vk::UniqueDeviceMemory bufferMemory{};
+    vk::UniqueBuffer buffer{};
 };
 
 class HelloTriangle {
@@ -80,10 +80,14 @@ private:
     void drawFrame();
     [[nodiscard]] vk::Extent2D chooseSwapExtent(const vk::SurfaceCapabilitiesKHR &capabilities) const;
     static void framebufferResizeCallback(void* userPointer, int width, int height);
-    [[nodiscard]] vk::UniqueBuffer createVertexBuffer() const;
-    [[nodiscard]] vk::UniqueDeviceMemory allocateVertexBufferMemory(const vk::Buffer &vertexBuffer) const;
-    [[nodiscard]] VertexBufferWithMemory createBufferWithMemory() const;
+    [[nodiscard]] vk::UniqueBuffer createDeviceBuffer(vk::DeviceSize size, vk::BufferUsageFlags usage) const;
+    [[nodiscard]] vk::UniqueDeviceMemory allocateVertexBufferMemory(const vk::Buffer &Buffer,
+                                                                    vk::MemoryPropertyFlags properties) const;
+    [[nodiscard]] BufferWithMemory createBuffer(vk::DeviceSize size, vk::BufferUsageFlags usage,
+                                                vk::MemoryPropertyFlags properties) const;
     [[nodiscard]] uint32_t findMemoryType(uint32_t typeFilter, vk::MemoryPropertyFlags properties) const;
+    [[nodiscard]] BufferWithMemory createVertexBuffer() const;
+    void copyBuffer(vk::Buffer srcBuffer, vk::Buffer dstBuffer, vk::DeviceSize size) const;
 
     GLFWWindow window;
     vk::UniqueInstance instance;
@@ -106,7 +110,7 @@ private:
     std::vector<vk::UniqueFramebuffer> swapChainFramebuffers;
     vk::UniqueCommandPool commandPool;
     vk::UniqueCommandPool transferCommandPool;
-    VertexBufferWithMemory vertexBufferWithMemory;
+    BufferWithMemory vertexBuffer;
     std::vector<vk::UniqueCommandBuffer> commandBuffers;
     std::array<vk::UniqueSemaphore, maxFramesInFlight> imageAvailableSemaphore;
     std::array<vk::UniqueSemaphore, maxFramesInFlight> renderFinishedSemaphore;

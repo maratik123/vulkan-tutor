@@ -8,8 +8,6 @@
 
 namespace {
     void actualMain() {
-        std::cout << print_time << "Start app" << std::endl;
-
         GLFWResource glfwResource{};
 
         HelloTriangle app{};
@@ -39,6 +37,7 @@ namespace {
 }
 
 int main() {
+    std::cout << print_time << "Start app" << std::endl;
     int result = wrap(actualMain);
     std::cout << print_time << "Exit" << std::endl;
     return result;

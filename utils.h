@@ -5,13 +5,13 @@
 #include <vector>
 
 #ifdef NDEBUG
-constexpr bool enableValidationLayers = false;
-constexpr bool enableDebugMessenger = false;
-constexpr bool exitWithStackTrace = false;
+constexpr auto enableValidationLayers = false;
+constexpr auto enableDebugMessenger = false;
+constexpr auto exitWithStackTrace = false;
 #else
-constexpr bool enableValidationLayers = true;
-constexpr bool enableDebugMessenger = true;
-constexpr bool exitWithStackTrace = true;
+constexpr auto enableValidationLayers = true;
+constexpr auto enableDebugMessenger = true;
+constexpr auto exitWithStackTrace = true;
 #endif
 
 std::ostream &print_time(std::ostream &out);

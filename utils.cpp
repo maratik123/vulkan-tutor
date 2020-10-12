@@ -1,25 +1,17 @@
 #include "utils.h"
 
-#include <iomanip>
-#include <ctime>
 #include <stdexcept>
 #include <fstream>
 
+#include "absl/time/time.h"
+#include "absl/time/clock.h"
+
+namespace {
+    const absl::TimeZone localTimeZone = absl::LocalTimeZone();
+}
+
 std::ostream &print_time(std::ostream &out) {
-    std::timespec ts;
-    if (std::timespec_get(&ts, TIME_UTC) != TIME_UTC) {
-        throw std::runtime_error("Can not get current time");
-    }
-    std::tm* now = std::localtime(&ts.tv_sec);
-    return out << '[' << std::setfill('0')
-               << (now->tm_year + 1900) << '-'
-               << std::setw(2) << (now->tm_mon + 1) << '-'
-               << std::setw(2) << now->tm_mday << ' '
-               << std::setw(2) << now->tm_hour << ':'
-               << std::setw(2) << now->tm_min << ':'
-               << std::setw(2) << now->tm_sec << '.'
-               << std::setw(9) << ts.tv_nsec
-               << "] ";
+    return out << '[' << absl::FormatTime(absl::Now(), localTimeZone) << "] ";
 }
 
 std::vector<char> readFile(const char *fileName) {

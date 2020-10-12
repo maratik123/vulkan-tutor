@@ -5,6 +5,8 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_VISIBILITY_PRESET hidden)
 set(CMAKE_VISIBILITY_INLINES_HIDDEN 1)
 
+add_subdirectory(abseil-cpp)
+
 function(add_shader TARGET SHADER)
     find_program(GLSLC glslc)
     set(current-shader-path ${CMAKE_CURRENT_SOURCE_DIR}/shaders/${SHADER})
@@ -45,4 +47,6 @@ target_include_directories(vulkan_tutor PRIVATE
 target_link_libraries(vulkan_tutor
         glfw
         ${Vulkan_LIBRARIES}
-        ${CMAKE_DL_LIBS})
+        ${CMAKE_DL_LIBS}
+        absl::flat_hash_set
+        absl::time)

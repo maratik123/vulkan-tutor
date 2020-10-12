@@ -45,7 +45,7 @@ GLFWWindow::createSurfaceUnique(const vk::Instance &instance, vk::Optional<const
     auto result = static_cast<vk::Result>(glfwCreateWindowSurface(
             instance, window,
             reinterpret_cast<const VkAllocationCallbacks *>(static_cast<const vk::AllocationCallbacks *>(allocator)),
-            reinterpret_cast<VkSurfaceKHR*>(&surface)
+            reinterpret_cast<VkSurfaceKHR *>(&surface)
     ));
 
     vk::ObjectDestroy<vk::Instance, Dispatch> deleter(instance, allocator, d);
