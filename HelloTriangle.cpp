@@ -1,10 +1,5 @@
 #include "HelloTriangle.h"
 
-#define GLM_FORCE_RADIANS
-#define GLM_FORCE_DEPTH_ZERO_TO_ONE
-#include <glm/vec3.hpp>
-#include <glm/vec2.hpp>
-
 #include <vector>
 #include <iostream>
 #include <string>
@@ -12,14 +7,25 @@
 #include <stdexcept>
 #include <set>
 #include <cstdint>
+
 #include "absl/container/flat_hash_set.h"
+#include "absl/time/clock.h"
+#include "absl/time/time.h"
+
+#define GLM_FORCE_RADIANS
+#define GLM_FORCE_DEPTH_ZERO_TO_ONE
+#define GLM_FORCE_LEFT_HANDED
+#include <glm/vec3.hpp>
+#include <glm/vec2.hpp>
+#include <glm/mat4x4.hpp>
+#include <glm/gtc/matrix_transform.hpp>
 
 #include "utils.h"
 
 namespace {
     struct Vertex {
-        glm::vec2 pos;
-        glm::vec3 color;
+        glm::vec2 pos{};
+        glm::vec3 color{};
 
         static constexpr vk::VertexInputBindingDescription bindingDescription() {
             return {
@@ -45,6 +51,19 @@ namespace {
                             }
                     }};
         }
+    };
+
+    struct UnifiedBufferObject {
+        alignas(16) glm::mat4 model{};
+        alignas(16) glm::mat4 view{};
+        alignas(16) glm::mat4 proj{};
+
+        static constexpr vk::DescriptorSetLayoutBinding uboLayoutBinding = vk::DescriptorSetLayoutBinding(
+                0,
+                vk::DescriptorType::eUniformBuffer,
+                1,
+                vk::ShaderStageFlagBits::eVertex
+        );
     };
 
     constexpr std::array<const char *, 1> validationLayers {"VK_LAYER_KHRONOS_validation"};
@@ -210,7 +229,8 @@ namespace {
 }
 
 HelloTriangle::HelloTriangle()
-        : window(framebufferResizeCallback, this),
+        : startTime(absl::Now()),
+          window(framebufferResizeCallback, this),
           instance(createInstance()),
           dl{},
           dldi(*instance, getVkGetInstanceProcAddr()),
@@ -226,6 +246,7 @@ HelloTriangle::HelloTriangle()
           swapChainImages(getSwapChainImages()),
           swapChainImageViews(createSwapChainImageViews()),
           renderPass(createRenderPass()),
+          descriptorSetLayout(createDescriptorSetLayout()),
           pipelineLayout(createPipelineLayout()),
           graphicsPipeline(createGraphicsPipeline()),
           swapChainFramebuffers(createFramebuffers()),
@@ -233,6 +254,9 @@ HelloTriangle::HelloTriangle()
           transferCommandPool(createCommandPool(queueFamilyIndices.transferFamily)),
           vertexBuffer(createVertexBuffer()),
           indexBuffer(createIndexBuffer()),
+          uniformBuffers(createUniformBuffers()),
+          descriptorPool(createDescriptorPool()),
+          descriptorSets(createDescriptorSets()),
           commandBuffers(createCommandBuffers()),
           imageAvailableSemaphore({logicalDevice->createSemaphoreUnique({}),
                                    logicalDevice->createSemaphoreUnique({})}),
@@ -349,7 +373,7 @@ vk::UniqueDevice HelloTriangle::createLogicalDevice() const {
             *queueFamilyIndices.transferFamily
     };
 
-    std::vector<vk::DeviceQueueCreateInfo> queueCreateInfos{};
+    std::vector<vk::DeviceQueueCreateInfo> queueCreateInfos;
     queueCreateInfos.reserve(uniqueQueueFamilies.size());
 
     for (const auto queueFamily : uniqueQueueFamilies) {
@@ -421,7 +445,7 @@ SwapChain HelloTriangle::createSwapChain() const {
 }
 
 std::vector<vk::UniqueImageView> HelloTriangle::createSwapChainImageViews() const {
-    std::vector<vk::UniqueImageView> result{};
+    std::vector<vk::UniqueImageView> result;
     result.reserve(swapChainImages.size());
 
     for (const auto image : swapChainImages) {
@@ -582,8 +606,8 @@ vk::UniqueShaderModule HelloTriangle::createShaderModule(const std::vector<char>
 vk::UniquePipelineLayout HelloTriangle::createPipelineLayout() const {
     return logicalDevice->createPipelineLayoutUnique(vk::PipelineLayoutCreateInfo(
             {},
-            0,
-            nullptr,
+            1,
+            &*descriptorSetLayout,
             0,
             nullptr
     ));
@@ -633,7 +657,7 @@ vk::UniqueRenderPass HelloTriangle::createRenderPass() const {
 }
 
 std::vector<vk::UniqueFramebuffer> HelloTriangle::createFramebuffers() const {
-    std::vector<vk::UniqueFramebuffer> result{};
+    std::vector<vk::UniqueFramebuffer> result;
     result.reserve(swapChainImageViews.size());
 
     for (const auto &imageView : swapChainImageViews) {
@@ -690,6 +714,8 @@ std::vector<vk::UniqueCommandBuffer> HelloTriangle::createCommandBuffers() const
         commandBuffer->bindPipeline(vk::PipelineBindPoint::eGraphics, *graphicsPipeline);
         commandBuffer->bindVertexBuffers(0, {*vertexBuffer.buffer}, {0});
         commandBuffer->bindIndexBuffer(*indexBuffer.buffer, 0, vk::IndexType::eUint16);
+        commandBuffer->bindDescriptorSets(vk::PipelineBindPoint::eGraphics, *pipelineLayout, 0, {*descriptorSets[i]},
+                                          {});
         commandBuffer->drawIndexed(static_cast<uint32_t>(indices.size()), 1, 0, 0, 0);
         commandBuffer->endRenderPass();
         commandBuffer->end();
@@ -716,6 +742,7 @@ void HelloTriangle::drawFrame() {
             vk::PipelineStageFlagBits::eColorAttachmentOutput
     };
     logicalDevice->resetFences({*inFlightFences[currentFrame]});
+    updateUniformBuffer(imageIndex);
     graphicsQueue.submit({vk::SubmitInfo(
             1,
             &*imageAvailableSemaphore[currentFrame],
@@ -747,6 +774,9 @@ void HelloTriangle::drawFrame() {
 void HelloTriangle::cleanupSwapChain() {
     imagesInFlight.clear();
     commandBuffers.clear();
+    descriptorSets.clear();
+    descriptorPool = {};
+    uniformBuffers.clear();
     swapChainFramebuffers.clear();
     graphicsPipeline = {};
     pipelineLayout = {};
@@ -776,6 +806,9 @@ void HelloTriangle::recreateSwapChain() {
     pipelineLayout = createPipelineLayout();
     graphicsPipeline = createGraphicsPipeline();
     swapChainFramebuffers = createFramebuffers();
+    uniformBuffers = createUniformBuffers();
+    descriptorPool = createDescriptorPool();
+    descriptorSets = createDescriptorSets();
     commandBuffers = createCommandBuffers();
     imagesInFlight = createImageFenceReferences();
 }
@@ -893,4 +926,95 @@ void HelloTriangle::copyBuffer(const BufferWithMemory &srcBuffer, const BufferWi
                                  vk::SubmitInfo({}, {}, {}, 1, &*commandBuffer)
                          }, {});
     transferQueue.waitIdle();
+}
+
+vk::UniqueDescriptorSetLayout HelloTriangle::createDescriptorSetLayout() const {
+    return logicalDevice->createDescriptorSetLayoutUnique(vk::DescriptorSetLayoutCreateInfo(
+            {},
+            1,
+            &UnifiedBufferObject::uboLayoutBinding
+    ));
+}
+
+std::vector<BufferWithMemory> HelloTriangle::createUniformBuffers() const {
+    const vk::DeviceSize bufferSize = sizeof(UnifiedBufferObject);
+
+    std::vector<BufferWithMemory> uniformBuffers_;
+    uniformBuffers_.reserve(swapChainImages.size());
+    for (size_t i = 0; i < swapChainImages.size(); ++i) {
+        uniformBuffers_.emplace_back(createBuffer(
+                bufferSize, vk::BufferUsageFlagBits::eUniformBuffer,
+                vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent
+        ));
+    }
+    return uniformBuffers_;
+}
+
+void HelloTriangle::updateUniformBuffer(uint32_t imageIndex) {
+    const auto currentTime = absl::Now();
+    const auto duration =  currentTime - startTime;
+    const auto time = static_cast<float>(absl::ToDoubleSeconds(duration));
+    auto proj = glm::perspective(
+            glm::radians(45.0f),
+            swapChain.extent.width / static_cast<float>(swapChain.extent.height),
+            0.1f,
+            10.0f);
+    proj[1][1] *= -1;
+    UnifiedBufferObject ubo {
+            {},
+            glm::rotate(
+                    glm::mat4(1.0f),
+                    time * glm::radians(90.0f),
+                    glm::vec3(0.0f, 0.0f, 1.0f)),
+            glm::lookAt(
+                    glm::vec3(2.0f, 2.0f, 2.0f),
+                    glm::vec3(0.0f, 0.0f, 0.0f),
+                    glm::vec3(0.0f, 0.0f, 1.0f)),
+            proj
+    };
+    void *data = logicalDevice->mapMemory(*uniformBuffers[imageIndex].bufferMemory, 0, sizeof(ubo));
+    std::memcpy(data, &ubo, sizeof(ubo));
+    logicalDevice->unmapMemory(*uniformBuffers[imageIndex].bufferMemory);
+}
+
+vk::UniqueDescriptorPool HelloTriangle::createDescriptorPool() const {
+    vk::DescriptorPoolSize poolSize(vk::DescriptorType::eUniformBuffer, static_cast<uint32_t>(swapChainImages.size()));
+    return logicalDevice->createDescriptorPoolUnique(vk::DescriptorPoolCreateInfo(
+            vk::DescriptorPoolCreateFlagBits::eFreeDescriptorSet,
+            static_cast<uint32_t>(swapChainImages.size()),
+            1,
+            &poolSize
+    ));
+}
+
+std::vector<vk::UniqueDescriptorSet> HelloTriangle::createDescriptorSets() const {
+    std::vector<vk::DescriptorSetLayout> layouts(swapChainImages.size(), *descriptorSetLayout);
+    vk::DescriptorSetAllocateInfo allocInfo(
+            *descriptorPool,
+            static_cast<uint32_t>(swapChainImages.size()),
+            layouts.data()
+    );
+
+    std::vector<vk::UniqueDescriptorSet> descriptorSets_ = logicalDevice->allocateDescriptorSetsUnique(allocInfo);
+
+    for (size_t i = 0; i < swapChainImages.size(); ++i) {
+        vk::DescriptorBufferInfo bufferInfo(
+                *uniformBuffers[i].buffer,
+                0,
+                sizeof(UnifiedBufferObject)
+        );
+
+        logicalDevice->updateDescriptorSets({vk::WriteDescriptorSet(
+                *descriptorSets_[i],
+                0,
+                0,
+                1,
+                vk::DescriptorType::eUniformBuffer,
+                nullptr,
+                &bufferInfo,
+                nullptr
+        )}, {});
+    }
+
+    return descriptorSets_;
 }

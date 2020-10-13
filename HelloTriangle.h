@@ -3,6 +3,7 @@
 
 #include <optional>
 #include <vector>
+#include "absl/time/time.h"
 
 #include "GLFWWindow.h"
 
@@ -89,7 +90,13 @@ private:
     [[nodiscard]] BufferWithMemory createVertexBuffer() const;
     [[nodiscard]] BufferWithMemory createIndexBuffer() const;
     void copyBuffer(const BufferWithMemory &srcBuffer, const BufferWithMemory &dstBuffer, vk::DeviceSize size) const;
+    [[nodiscard]] vk::UniqueDescriptorSetLayout createDescriptorSetLayout() const;
+    [[nodiscard]] std::vector<BufferWithMemory> createUniformBuffers() const;
+    void updateUniformBuffer(uint32_t imageIndex);
+    [[nodiscard]] vk::UniqueDescriptorPool createDescriptorPool() const;
+    [[nodiscard]] std::vector<vk::UniqueDescriptorSet> createDescriptorSets() const;
 
+    absl::Time startTime;
     GLFWWindow window;
     vk::UniqueInstance instance;
     vk::DynamicLoader dl;
@@ -106,6 +113,7 @@ private:
     std::vector<vk::Image> swapChainImages;
     std::vector<vk::UniqueImageView> swapChainImageViews;
     vk::UniqueRenderPass renderPass;
+    vk::UniqueDescriptorSetLayout descriptorSetLayout;
     vk::UniquePipelineLayout pipelineLayout;
     vk::UniquePipeline graphicsPipeline;
     std::vector<vk::UniqueFramebuffer> swapChainFramebuffers;
@@ -113,6 +121,9 @@ private:
     vk::UniqueCommandPool transferCommandPool;
     BufferWithMemory vertexBuffer;
     BufferWithMemory indexBuffer;
+    std::vector<BufferWithMemory> uniformBuffers;
+    vk::UniqueDescriptorPool descriptorPool;
+    std::vector<vk::UniqueDescriptorSet> descriptorSets;
     std::vector<vk::UniqueCommandBuffer> commandBuffers;
     std::array<vk::UniqueSemaphore, maxFramesInFlight> imageAvailableSemaphore;
     std::array<vk::UniqueSemaphore, maxFramesInFlight> renderFinishedSemaphore;
