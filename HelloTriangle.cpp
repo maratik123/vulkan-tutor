@@ -961,7 +961,6 @@ void HelloTriangle::updateUniformBuffer(uint32_t imageIndex) {
             10.0f);
     proj[1][1] *= -1;
     UnifiedBufferObject ubo {
-            {},
             glm::rotate(
                     glm::mat4(1.0f),
                     time * glm::radians(90.0f),
