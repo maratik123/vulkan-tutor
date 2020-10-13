@@ -101,7 +101,7 @@ private:
     vk::UniqueInstance instance;
     vk::DynamicLoader dl;
     vk::DispatchLoaderDynamic dldi;
-    debug::DynamicUniqueDebugUtilsMessengerEXT debugMessenger;
+    [[maybe_unused]] debug::DynamicUniqueDebugUtilsMessengerEXT debugMessenger;
     vk::UniqueSurfaceKHR surface;
     vk::PhysicalDevice physicalDevice;
     QueueFamilyIndices queueFamilyIndices;
