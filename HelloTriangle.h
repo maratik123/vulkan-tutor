@@ -6,6 +6,7 @@
 #include "absl/time/time.h"
 
 #include "GLFWWindow.h"
+#include "debug.h"
 
 struct QueueFamilyIndices {
     std::optional<uint32_t> graphicsFamily{};
@@ -41,11 +42,9 @@ public:
     void run();
 
 private:
-    using DynamicUniqueDebugUtilsMessengerEXT = vk::UniqueHandle<vk::DebugUtilsMessengerEXT, vk::DispatchLoaderDynamic>;
     using OptRefUniqueFence = std::optional<std::reference_wrapper<vk::UniqueFence>>;
     static constexpr int maxFramesInFlight = 2;
 
-    [[nodiscard]] DynamicUniqueDebugUtilsMessengerEXT setupDebugMessenger() const;
     [[nodiscard]] PFN_vkGetInstanceProcAddr getVkGetInstanceProcAddr() const;
     [[nodiscard]] vk::PhysicalDevice pickPhysicalDevice() const;
     [[nodiscard]] vk::UniqueDevice createLogicalDevice() const;
@@ -101,7 +100,7 @@ private:
     vk::UniqueInstance instance;
     vk::DynamicLoader dl;
     vk::DispatchLoaderDynamic dldi;
-    DynamicUniqueDebugUtilsMessengerEXT debugMessenger;
+    debug::DynamicUniqueDebugUtilsMessengerEXT debugMessenger;
     vk::UniqueSurfaceKHR surface;
     vk::PhysicalDevice physicalDevice;
     QueueFamilyIndices queueFamilyIndices;

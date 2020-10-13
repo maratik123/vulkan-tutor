@@ -29,7 +29,10 @@ add_executable(vulkan_tutor
         HelloTriangle.cpp HelloTriangle.h
         GLFWWindow.cpp GLFWWindow.h
         GLFWResource.cpp GLFWResource.h
-        utils.cpp utils.h)
+        utils.cpp utils.h
+        ShaderObjects.h
+        GLMInclude.h
+        debug.cpp debug.h)
 
 add_shader(vulkan_tutor shader.vert)
 add_shader(vulkan_tutor shader.frag)
