@@ -39,9 +39,9 @@ namespace so {
     };
 
     struct UnifiedBufferObject {
-        [[maybe_unused]] alignas(16) glm::mat4 model{};
-        [[maybe_unused]] alignas(16) glm::mat4 view{};
-        [[maybe_unused]] alignas(16) glm::mat4 proj{};
+        alignas(16) glm::mat4 model{};
+        alignas(16) glm::mat4 view{};
+        alignas(16) glm::mat4 proj{};
 
         static constexpr vk::DescriptorSetLayoutBinding uboLayoutBinding = vk::DescriptorSetLayoutBinding(
                 0,

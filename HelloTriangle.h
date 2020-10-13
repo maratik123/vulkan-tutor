@@ -89,19 +89,21 @@ private:
     [[nodiscard]] uint32_t findMemoryType(uint32_t typeFilter, vk::MemoryPropertyFlags properties) const;
     [[nodiscard]] BufferWithMemory createVertexBuffer() const;
     [[nodiscard]] BufferWithMemory createIndexBuffer() const;
-    void copyBuffer(const BufferWithMemory &srcBuffer, const BufferWithMemory &dstBuffer, vk::DeviceSize size) const;
+    void copyBuffer(const BufferWithMemory &srcBuffer, const BufferWithMemory &dstBuffer, vk::DeviceSize size,
+                    bool flush) const;
     [[nodiscard]] vk::UniqueDescriptorSetLayout createDescriptorSetLayout() const;
     [[nodiscard]] std::vector<BufferWithMemory> createUniformBuffers() const;
     void updateUniformBuffer(uint32_t imageIndex);
     [[nodiscard]] vk::UniqueDescriptorPool createDescriptorPool() const;
     [[nodiscard]] std::vector<vk::UniqueDescriptorSet> createDescriptorSets() const;
+    void copyViaStagingBuffer(const void *src, size_t size, const BufferWithMemory &dst) const;
 
     std::chrono::high_resolution_clock::time_point startTime;
     GLFWWindow window;
     vk::UniqueInstance instance;
     vk::DynamicLoader dl;
     vk::DispatchLoaderDynamic dldi;
-    [[maybe_unused]] debug::DynamicUniqueDebugUtilsMessengerEXT debugMessenger;
+    debug::DynamicUniqueDebugUtilsMessengerEXT debugMessenger;
     vk::UniqueSurfaceKHR surface;
     vk::PhysicalDevice physicalDevice;
     QueueFamilyIndices queueFamilyIndices;

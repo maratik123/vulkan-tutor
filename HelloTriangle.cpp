@@ -722,55 +722,43 @@ BufferWithMemory HelloTriangle::createBuffer(vk::DeviceSize size, vk::BufferUsag
 }
 
 BufferWithMemory HelloTriangle::createVertexBuffer() const {
-    auto stagingBuffer = createBuffer(
-            so::verticesSize, vk::BufferUsageFlagBits::eTransferSrc,
-            vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCached);
-
-    void *data = logicalDevice->mapMemory(*stagingBuffer.bufferMemory, 0, so::verticesSize);
-    std::memcpy(data, so::vertices.data(), static_cast<size_t>(so::verticesSize));
-
     auto result = createBuffer(
             so::verticesSize, vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eVertexBuffer,
             vk::MemoryPropertyFlagBits::eDeviceLocal);
 
-    copyBuffer(stagingBuffer, result, so::verticesSize);
-    logicalDevice->unmapMemory(*stagingBuffer.bufferMemory);
+    copyViaStagingBuffer(so::vertices.data(), static_cast<size_t>(so::verticesSize), result);
     return result;
 }
 
 BufferWithMemory HelloTriangle::createIndexBuffer() const {
-    auto stagingBuffer = createBuffer(
-            so::indicesSize, vk::BufferUsageFlagBits::eTransferSrc,
-            vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCached);
-
-    void *data = logicalDevice->mapMemory(*stagingBuffer.bufferMemory, 0, so::indicesSize);
-    std::memcpy(data, so::indices.data(), static_cast<size_t>(so::indicesSize));
-
     auto result = createBuffer(
             so::indicesSize, vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eIndexBuffer,
             vk::MemoryPropertyFlagBits::eDeviceLocal);
 
-    copyBuffer(stagingBuffer, result, so::indicesSize);
-    logicalDevice->unmapMemory(*stagingBuffer.bufferMemory);
+    copyViaStagingBuffer(so::indices.data(), static_cast<size_t>(so::indicesSize), result);
     return result;
 }
 
 void HelloTriangle::copyBuffer(const BufferWithMemory &srcBuffer, const BufferWithMemory &dstBuffer,
-                               vk::DeviceSize size) const {
-    auto commandBuffer = std::move(logicalDevice->allocateCommandBuffersUnique(
+                               vk::DeviceSize size, bool flush) const {
+    const auto commandBuffers = logicalDevice->allocateCommandBuffersUnique(
             vk::CommandBufferAllocateInfo(
                     *transferCommandPool,
                     vk::CommandBufferLevel::ePrimary,
                     1
             )
-    ).front());
+    );
+
+    const auto &commandBuffer = commandBuffers.front();
 
     commandBuffer->begin(vk::CommandBufferBeginInfo(vk::CommandBufferUsageFlagBits::eOneTimeSubmit));
     commandBuffer->copyBuffer(*srcBuffer.buffer, *dstBuffer.buffer, {
             vk::BufferCopy(0, 0, size)
     });
     commandBuffer->end();
-    logicalDevice->flushMappedMemoryRanges({vk::MappedMemoryRange(*srcBuffer.bufferMemory, 0, VK_WHOLE_SIZE)});
+    if (flush) {
+        logicalDevice->flushMappedMemoryRanges({vk::MappedMemoryRange(*srcBuffer.bufferMemory, 0, VK_WHOLE_SIZE)});
+    }
     transferQueue.submit({
                                  vk::SubmitInfo({}, {}, {}, 1, &*commandBuffer)
                          }, {});
@@ -819,16 +807,7 @@ void HelloTriangle::updateUniformBuffer(uint32_t imageIndex) {
                     glm::vec3(0.0f, 0.0f, 1.0f)),
             proj
     };
-    auto stagingBuffer = createBuffer(
-            sizeof(ubo), vk::BufferUsageFlagBits::eTransferSrc,
-            vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCached
-    );
-
-    void *data = logicalDevice->mapMemory(*stagingBuffer.bufferMemory, 0, sizeof(ubo));
-    std::memcpy(data, &ubo, sizeof(ubo));
-
-    copyBuffer(stagingBuffer, uniformBuffers[imageIndex], sizeof(ubo));
-    logicalDevice->unmapMemory(*stagingBuffer.bufferMemory);
+    copyViaStagingBuffer(&ubo, sizeof(ubo), uniformBuffers[imageIndex]);
 }
 
 vk::UniqueDescriptorPool HelloTriangle::createDescriptorPool() const {
@@ -871,4 +850,17 @@ std::vector<vk::UniqueDescriptorSet> HelloTriangle::createDescriptorSets() const
     }
 
     return descriptorSets_;
+}
+
+void HelloTriangle::copyViaStagingBuffer(const void *src, size_t size, const BufferWithMemory &dst) const {
+    auto stagingBuffer = createBuffer(
+            size, vk::BufferUsageFlagBits::eTransferSrc,
+            vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCached
+    );
+
+    void *data = logicalDevice->mapMemory(*stagingBuffer.bufferMemory, 0, size);
+    std::memcpy(data, src, size);
+
+    copyBuffer(stagingBuffer, dst, size, true);
+    logicalDevice->unmapMemory(*stagingBuffer.bufferMemory);
 }
