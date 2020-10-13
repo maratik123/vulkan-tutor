@@ -1,0 +1,7 @@
+#ifndef VULKAN_TUTOR_STBINCLUDE_H
+#define VULKAN_TUTOR_STBINCLUDE_H
+
+#define STB_IMAGE_IMPLEMENTATION
+#include "stb_image.h"
+
+#endif //VULKAN_TUTOR_STBINCLUDE_H
