@@ -1,10 +1,7 @@
 #include <iostream>
-#include <cstdlib>
-#include <stdexcept>
 
 #include "GLFWResource.h"
 #include "HelloTriangle.h"
-#include "utils.h"
 
 namespace {
     void actualMain() {

@@ -2,8 +2,6 @@
 #define VULKAN_TUTOR_GLFWWINDOW_H
 
 #include <vector>
-#include <string>
-
 #include "GLFWInclude.h"
 
 class GLFWWindow {

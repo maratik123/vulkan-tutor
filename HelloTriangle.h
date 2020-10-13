@@ -2,8 +2,9 @@
 #define VULKAN_TUTOR_HELLOTRIANGLE_H
 
 #include <optional>
-#include <vector>
-#include "absl/time/time.h"
+#include <chrono>
+
+#include "GLFWInclude.h"
 
 #include "GLFWWindow.h"
 #include "debug.h"
@@ -95,7 +96,7 @@ private:
     [[nodiscard]] vk::UniqueDescriptorPool createDescriptorPool() const;
     [[nodiscard]] std::vector<vk::UniqueDescriptorSet> createDescriptorSets() const;
 
-    absl::Time startTime;
+    std::chrono::high_resolution_clock::time_point startTime;
     GLFWWindow window;
     vk::UniqueInstance instance;
     vk::DynamicLoader dl;

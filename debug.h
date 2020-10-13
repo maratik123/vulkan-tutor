@@ -1,8 +1,6 @@
 #ifndef VULKAN_TUTOR_DEBUG_H
 #define VULKAN_TUTOR_DEBUG_H
 
-#include <array>
-
 #include <vulkan/vulkan.hpp>
 
 #include "utils.h"
@@ -63,6 +61,12 @@ namespace debug {
     constexpr void appendDebugInfo(vk::InstanceCreateInfo &createInfo) {
         if (enableDebugMessenger) {
             createInfo.pNext = &debug::createDebugInfo;
+        }
+    }
+
+    inline void appendDebugExtension(std::vector<const char *> &extensions) {
+        if (enableDebugMessenger) {
+            extensions.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
         }
     }
 }

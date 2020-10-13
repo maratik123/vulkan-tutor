@@ -1,8 +1,11 @@
 #ifndef VULKAN_TUTOR_SHADEROBJECTS_H
 #define VULKAN_TUTOR_SHADEROBJECTS_H
 
+#include <array>
+
+#include "GLFWInclude.h"
+
 #include "GLMInclude.h"
-#include <vulkan/vulkan.hpp>
 
 namespace so {
     struct Vertex {

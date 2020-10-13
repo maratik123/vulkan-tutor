@@ -1,6 +1,6 @@
 #include "GLFWWindow.h"
 
-#include "utils.h"
+#include "debug.h"
 
 void GLFWWindow::framebufferResizeCallback(GLFWwindow *window, int width, int height) {
     auto *_this = reinterpret_cast<GLFWWindow *>(glfwGetWindowUserPointer(window));
@@ -35,9 +35,7 @@ std::vector<const char *> GLFWWindow::requiredExtensions() {
     const char **glfwExtensions = glfwGetRequiredInstanceExtensions(&glfwExtensionCount);
 
     std::vector<const char *> result(glfwExtensions, glfwExtensions + glfwExtensionCount);
-    if (enableDebugMessenger) {
-        result.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
-    }
+    debug::appendDebugExtension(result);
 
     return result;
 }

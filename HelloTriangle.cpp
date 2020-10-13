@@ -1,18 +1,9 @@
 #include "HelloTriangle.h"
 
-#include <vector>
+#include <unordered_set>
 #include <iostream>
-#include <algorithm>
-#include <stdexcept>
-#include <set>
-#include <cstdint>
-
-#include "absl/container/flat_hash_set.h"
-#include "absl/time/clock.h"
-#include "absl/time/time.h"
 
 #include "ShaderObjects.h"
-#include "debug.h"
 
 namespace {
     constexpr std::array<const char *, 1> deviceExtensions {VK_KHR_SWAPCHAIN_EXTENSION_NAME};
@@ -25,12 +16,13 @@ namespace {
 
     void checkExtensions(const std::vector<const char *> &requiredExtensions) {
         const auto availableExtensions = vk::enumerateInstanceExtensionProperties();
+        std::unordered_set<std::string> availableExtensionNames;
+        availableExtensionNames.reserve(availableExtensions.size());
+        for (const auto availableExtension : availableExtensions) {
+            availableExtensionNames.emplace(availableExtension.extensionName);
+        }
         for (const auto requiredExtension : requiredExtensions) {
-            if (std::none_of(
-                    availableExtensions.cbegin(), availableExtensions.cend(),
-                    [&requiredExtension](const auto &availableExtension) {
-                        return std::strcmp(requiredExtension, availableExtension.extensionName) == 0;
-                    })) {
+            if (availableExtensionNames.find(requiredExtension) == availableExtensionNames.cend()) {
                 throw vk::ExtensionNotPresentError(requiredExtension);
             }
         }
@@ -38,15 +30,16 @@ namespace {
 
     bool checkDeviceExtensionSupport(const vk::PhysicalDevice &device) {
         const auto availableExtensions = device.enumerateDeviceExtensionProperties();
+        std::unordered_set<std::string> availableExtensionNames;
+        availableExtensionNames.reserve(availableExtensions.size());
+        for (const auto availableExtension : availableExtensions) {
+            availableExtensionNames.emplace(availableExtension.extensionName);
+        }
 
         return std::all_of(
                 deviceExtensions.cbegin(), deviceExtensions.cend(),
-                [&availableExtensions](const auto &requiredExtension) {
-                    return std::any_of(
-                            availableExtensions.cbegin(), availableExtensions.cend(),
-                            [&requiredExtension](const auto &availableExtension) {
-                                return std::strcmp(requiredExtension, availableExtension.extensionName) == 0;
-                            });
+                [&availableExtensionNames](const auto &requiredExtension) {
+                    return availableExtensionNames.find(requiredExtension) != availableExtensionNames.cend();
                 });
     }
 
@@ -95,7 +88,7 @@ namespace {
 }
 
 HelloTriangle::HelloTriangle()
-        : startTime(absl::Now()),
+        : startTime(std::chrono::high_resolution_clock::now()),
           window(framebufferResizeCallback, this),
           instance(createInstance()),
           dl{},
@@ -223,7 +216,7 @@ HelloTriangle::~HelloTriangle() {
 vk::UniqueDevice HelloTriangle::createLogicalDevice() const {
     float queuePriority = 1.0f;
 
-    absl::flat_hash_set<uint32_t> uniqueQueueFamilies{
+    std::unordered_set<uint32_t> uniqueQueueFamilies{
             *queueFamilyIndices.graphicsFamily,
             *queueFamilyIndices.presentFamily,
             *queueFamilyIndices.transferFamily
@@ -268,7 +261,7 @@ SwapChain HelloTriangle::createSwapChain() const {
         imageCount = swapChainSupport.capabilities.maxImageCount;
     }
 
-    const absl::flat_hash_set<uint32_t> queryFamilyIndicesUnique{
+    const std::unordered_set<uint32_t> queryFamilyIndicesUnique{
             *queueFamilyIndices.graphicsFamily,
             *queueFamilyIndices.presentFamily,
             *queueFamilyIndices.transferFamily
@@ -807,9 +800,8 @@ std::vector<BufferWithMemory> HelloTriangle::createUniformBuffers() const {
 }
 
 void HelloTriangle::updateUniformBuffer(uint32_t imageIndex) {
-    const auto currentTime = absl::Now();
-    const auto duration =  currentTime - startTime;
-    const auto time = static_cast<float>(absl::ToDoubleSeconds(duration));
+    const auto currentTime = std::chrono::high_resolution_clock::now();
+    const std::chrono::duration<float> duration = currentTime - startTime;
     auto proj = glm::perspective(
             glm::radians(45.0f),
             swapChain.extent.width / static_cast<float>(swapChain.extent.height),
@@ -819,7 +811,7 @@ void HelloTriangle::updateUniformBuffer(uint32_t imageIndex) {
     so::UnifiedBufferObject ubo {
             glm::rotate(
                     glm::mat4(1.0f),
-                    time * glm::radians(90.0f),
+                    duration.count() * glm::radians(90.0f),
                     glm::vec3(0.0f, 0.0f, 1.0f)),
             glm::lookAt(
                     glm::vec3(2.0f, 2.0f, 2.0f),

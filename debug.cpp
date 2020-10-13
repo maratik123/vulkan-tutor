@@ -1,13 +1,7 @@
 #include "debug.h"
 
-#include <array>
-#include <algorithm>
-#include <cstring>
 #include <iostream>
-
-#include <vulkan/vulkan.hpp>
-
-#include "utils.h"
+#include <unordered_set>
 
 namespace debug::internal {
     namespace {
@@ -34,12 +28,13 @@ namespace debug::internal {
 
     void checkValidationLayerSupport() {
         const auto availableLayers = vk::enumerateInstanceLayerProperties();
+        std::unordered_set<std::string> availableLayerNames;
+        availableLayerNames.reserve(availableLayers.size());
+        for (const vk::LayerProperties &availableLayer : availableLayers) {
+            availableLayerNames.emplace(availableLayer.layerName);
+        }
         for (const auto validationLayer : validationLayers) {
-            if (std::none_of(
-                    availableLayers.cbegin(), availableLayers.cend(),
-                    [&validationLayer](const auto &availableLayer) {
-                        return std::strcmp(validationLayer, availableLayer.layerName) == 0;
-                    })) {
+            if (availableLayerNames.find(validationLayer) == availableLayerNames.cend()) {
                 throw vk::LayerNotPresentError(validationLayer);
             }
         }

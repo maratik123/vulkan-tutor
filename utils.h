@@ -1,7 +1,7 @@
 #ifndef VULKAN_TUTOR_UTILS_H
 #define VULKAN_TUTOR_UTILS_H
 
-#include <iostream>
+#include <ostream>
 #include <vector>
 
 #ifdef NDEBUG
