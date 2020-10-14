@@ -4,6 +4,12 @@ project(vulkan_tutor)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_VISIBILITY_PRESET hidden)
 set(CMAKE_VISIBILITY_INLINES_HIDDEN 1)
+if (CMAKE_COMPILER_IS_GNUCC)
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} \
+     -Wall -Wextra -Wcast-qual -Wconversion-null -Wmissing-declarations \
+     -Woverlength-strings -Wpointer-arith -Wunused-local-typedefs -Wunused-result \
+     -Wvarargs -Wvla -Wwrite-strings")
+endif()
 
 function(add_shader TARGET SHADER)
     find_program(GLSLC glslc)
@@ -45,7 +51,8 @@ add_executable(vulkan_tutor
         ShaderObjects.h
         GLMInclude.h
         debug.cpp debug.h
-        STBInclude.h Image.cpp Image.h)
+        STBInclude.h
+        Image.cpp Image.h)
 
 add_shader(vulkan_tutor shader.vert)
 add_shader(vulkan_tutor shader.frag)

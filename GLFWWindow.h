@@ -6,7 +6,7 @@
 
 class GLFWWindow {
 public:
-    typedef void (* GLFWframebuffersizefun)(void *, int, int);
+    typedef void (*GLFWframebuffersizefun)(void *, int, int);
 
     explicit GLFWWindow(GLFWframebuffersizefun framebufferResizeCallback = nullptr, void *userPointer = nullptr);
     ~GLFWWindow();

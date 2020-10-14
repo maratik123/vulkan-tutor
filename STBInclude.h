@@ -2,6 +2,9 @@
 #define VULKAN_TUTOR_STBINCLUDE_H
 
 #define STB_IMAGE_IMPLEMENTATION
+#define STBI_ONLY_JPEG
+#define STB_IMAGE_STATIC
+#define STBI_NO_LINEAR
 #include "stb_image.h"
 
 #endif //VULKAN_TUTOR_STBINCLUDE_H

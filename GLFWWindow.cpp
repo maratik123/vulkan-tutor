@@ -3,7 +3,7 @@
 #include "debug.h"
 
 void GLFWWindow::framebufferResizeCallback(GLFWwindow *window, int width, int height) {
-    auto *_this = reinterpret_cast<GLFWWindow *>(glfwGetWindowUserPointer(window));
+    auto *_this = static_cast<GLFWWindow *>(glfwGetWindowUserPointer(window));
     (*_this->framebufferResizeCallbackFn)(_this->userPointer, width, height);
 }
 

@@ -4,13 +4,13 @@
 #include <cstddef>
 
 struct Image {
+    unsigned char *pixels;
+    std::size_t imageSize;
     int texWidth;
     int texHeight;
     int texChannels;
-    unsigned char *pixels;
-    std::size_t imageSize;
 
-    Image(const char *fileName);
+    explicit Image(const char *fileName);
     ~Image();
 };
 

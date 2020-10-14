@@ -22,16 +22,19 @@ namespace debug {
         constexpr std::array<const char *, 1> validationLayers {"VK_LAYER_KHRONOS_validation"};
     }
 
+    template<bool enableValidationLayers = ::enableValidationLayers>
     inline void checkValidationLayerSupport() {
         if (enableValidationLayers) {
             internal::checkValidationLayerSupport();
         }
     }
 
+    template<bool enableValidationLayers = ::enableValidationLayers>
     constexpr size_t validationLayersSize() {
         return enableValidationLayers ? internal::validationLayers.size() : 0;
     }
 
+    template<bool enableValidationLayers = ::enableValidationLayers>
     constexpr const char * const * validationLayersData() {
         return enableValidationLayers ? internal::validationLayers.data() : nullptr;
     }
@@ -49,6 +52,7 @@ namespace debug {
             nullptr
     );
 
+    template<bool enableDebugMessenger = ::enableDebugMessenger>
     inline DynamicUniqueDebugUtilsMessengerEXT setupDebugMessenger(vk::Instance instance,
                                                                    const vk::DispatchLoaderDynamic &d) {
         if (!enableDebugMessenger) {
@@ -58,12 +62,14 @@ namespace debug {
         return internal::setupDebugMessenger(instance, d);
     }
 
+    template<bool enableDebugMessenger = ::enableDebugMessenger>
     constexpr void appendDebugInfo(vk::InstanceCreateInfo &createInfo) {
         if (enableDebugMessenger) {
             createInfo.pNext = &debug::createDebugInfo;
         }
     }
 
+    template<bool enableDebugMessenger = ::enableDebugMessenger>
     inline void appendDebugExtension(std::vector<const char *> &extensions) {
         if (enableDebugMessenger) {
             extensions.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);

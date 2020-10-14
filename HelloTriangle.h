@@ -36,6 +36,20 @@ struct BufferWithMemory {
     vk::UniqueBuffer buffer{};
 };
 
+struct ImageWithMemory {
+    vk::UniqueDeviceMemory imageMemory{};
+    vk::UniqueImage image{};
+};
+
+struct SwitchLayout {
+    vk::ImageLayout oldLayout{};
+    vk::ImageLayout newLayout{};
+
+    bool operator ==(const SwitchLayout &other) const {
+        return oldLayout == other.oldLayout && newLayout == other.newLayout;
+    };
+};
+
 class HelloTriangle {
 public:
     HelloTriangle();
@@ -65,7 +79,8 @@ private:
     [[nodiscard]] vk::UniquePipelineLayout createPipelineLayout() const;
     [[nodiscard]] vk::UniqueRenderPass createRenderPass() const;
     [[nodiscard]] std::vector<vk::UniqueFramebuffer> createFramebuffers() const;
-    [[nodiscard]] vk::UniqueCommandPool createCommandPool(std::optional<uint32_t> queueFamily) const;
+    [[nodiscard]] vk::UniqueCommandPool createCommandPool(std::optional<uint32_t> queueFamily,
+                                                          vk::CommandPoolCreateFlags commandPoolCreateFlags) const;
     [[nodiscard]] std::vector<vk::UniqueCommandBuffer> createCommandBuffers() const;
     [[nodiscard]] vk::UniqueFence createFence() const {
         return logicalDevice->createFenceUnique(vk::FenceCreateInfo(vk::FenceCreateFlagBits::eSignaled));
@@ -81,22 +96,29 @@ private:
     void drawFrame();
     [[nodiscard]] vk::Extent2D chooseSwapExtent(const vk::SurfaceCapabilitiesKHR &capabilities) const;
     static void framebufferResizeCallback(void* userPointer, int width, int height);
-    [[nodiscard]] vk::UniqueBuffer createDeviceBuffer(vk::DeviceSize size, vk::BufferUsageFlags usage) const;
-    [[nodiscard]] vk::UniqueDeviceMemory allocateVertexBufferMemory(vk::Buffer Buffer,
-                                                                    vk::MemoryPropertyFlags properties) const;
     [[nodiscard]] BufferWithMemory createBuffer(vk::DeviceSize size, vk::BufferUsageFlags usage,
                                                 vk::MemoryPropertyFlags properties) const;
     [[nodiscard]] uint32_t findMemoryType(uint32_t typeFilter, vk::MemoryPropertyFlags properties) const;
     [[nodiscard]] BufferWithMemory createVertexBuffer() const;
     [[nodiscard]] BufferWithMemory createIndexBuffer() const;
-    void copyBuffer(const BufferWithMemory &srcBuffer, const BufferWithMemory &dstBuffer, vk::DeviceSize size,
-                    bool flush) const;
+    template<typename CopyCommand, typename FlushBuffer>
+    void singleTimeCommand(CopyCommand copyCommand, FlushBuffer flushBuffer) const;
     [[nodiscard]] vk::UniqueDescriptorSetLayout createDescriptorSetLayout() const;
     [[nodiscard]] std::vector<BufferWithMemory> createUniformBuffers() const;
     void updateUniformBuffer(uint32_t imageIndex);
     [[nodiscard]] vk::UniqueDescriptorPool createDescriptorPool() const;
     [[nodiscard]] std::vector<vk::UniqueDescriptorSet> createDescriptorSets() const;
     void copyViaStagingBuffer(const void *src, size_t size, const BufferWithMemory &dst) const;
+    template<typename CopyCommandFactory>
+    void copyViaStagingBuffer(const void *src, size_t size, CopyCommandFactory copyCommandFactory) const;
+    [[nodiscard]] vk::UniqueCommandBuffer createTransferCommandBuffer() const;
+    [[nodiscard]] ImageWithMemory createTextureImage() const;
+    [[nodiscard]] ImageWithMemory createImage(uint32_t width, uint32_t height, vk::Format format,
+                                              vk::ImageTiling tiling, vk::ImageUsageFlags usage,
+                                              vk::MemoryPropertyFlags properties) const;
+    void transitionImageLayout(vk::Image image, SwitchLayout switchLayout) const;
+    [[nodiscard]] vk::UniqueImageView createImageView(vk::Image image, vk::Format format) const;
+    [[nodiscard]] vk::UniqueSampler createTextureSampler() const;
 
     std::chrono::high_resolution_clock::time_point startTime;
     GLFWWindow window;
@@ -121,12 +143,16 @@ private:
     std::vector<vk::UniqueFramebuffer> swapChainFramebuffers;
     vk::UniqueCommandPool commandPool;
     vk::UniqueCommandPool transferCommandPool;
+    vk::UniqueCommandBuffer transferCommandBuffer;
     BufferWithMemory vertexBuffer;
     BufferWithMemory indexBuffer;
     std::vector<BufferWithMemory> uniformBuffers;
     vk::UniqueDescriptorPool descriptorPool;
     std::vector<vk::UniqueDescriptorSet> descriptorSets;
     std::vector<vk::UniqueCommandBuffer> commandBuffers;
+    ImageWithMemory textureImage;
+    vk::UniqueImageView textureImageView;
+    vk::UniqueSampler textureSampler;
     std::array<vk::UniqueSemaphore, maxFramesInFlight> imageAvailableSemaphore;
     std::array<vk::UniqueSemaphore, maxFramesInFlight> renderFinishedSemaphore;
     std::array<vk::UniqueFence, maxFramesInFlight> inFlightFences;

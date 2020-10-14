@@ -61,7 +61,7 @@ namespace so {
                                                       0, 1, 2, 2, 3, 0
                                               }};
 
-    constexpr uint64_t verticesSize = sizeof(decltype(vertices)::value_type) * vertices.size();
-    constexpr uint64_t indicesSize = sizeof(decltype(indices)::value_type) * indices.size();
+    constexpr size_t verticesSize = sizeof(decltype(vertices)::value_type) * vertices.size();
+    constexpr size_t indicesSize = sizeof(decltype(indices)::value_type) * indices.size();
 }
 #endif //VULKAN_TUTOR_SHADEROBJECTS_H

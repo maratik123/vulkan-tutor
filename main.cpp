@@ -12,7 +12,7 @@ namespace {
         app.run();
     }
 
-    template<typename F>
+    template<typename F, bool exitWithStackTrace = ::exitWithStackTrace>
     int wrap(F f) {
         try {
             f();
