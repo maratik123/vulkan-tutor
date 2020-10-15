@@ -608,11 +608,9 @@ void HelloTriangle::drawFrame() {
                 &imageIndex
         ));
     } catch (const vk::OutOfDateKHRError &e) {
-        framebufferResized = false;
         result = vk::Result::eErrorOutOfDateKHR;
-        recreateSwapChain();
     }
-    if (result == vk::Result::eSuboptimalKHR || framebufferResized) {
+    if (result == vk::Result::eSuboptimalKHR || result == vk::Result::eErrorOutOfDateKHR || framebufferResized) {
         framebufferResized = false;
         recreateSwapChain();
     }
