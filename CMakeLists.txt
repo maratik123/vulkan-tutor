@@ -4,6 +4,9 @@ project(vulkan_tutor)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_VISIBILITY_PRESET hidden)
 set(CMAKE_VISIBILITY_INLINES_HIDDEN 1)
+#set_property(GLOBAL PROPERTY RULE_LAUNCH_COMPILE "${CMAKE_COMMAND} -E time")
+#set_property(GLOBAL PROPERTY RULE_LAUNCH_CUSTOM "${CMAKE_COMMAND} -E time")
+#set_property(GLOBAL PROPERTY RULE_LAUNCH_LINK "${CMAKE_COMMAND} -E time")
 if (CMAKE_COMPILER_IS_GNUCC)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} \
      -Wall -Wextra -Wcast-qual -Wconversion-null -Wmissing-declarations \
@@ -42,17 +45,17 @@ function(add_texture TARGET TEXTURE)
 endfunction(add_texture)
 
 add_executable(vulkan_tutor
-        main.cpp
-        GLFWInclude.h
         HelloTriangle.cpp HelloTriangle.h
+        debug.cpp debug.h
+        main.cpp
         GLFWWindow.cpp GLFWWindow.h
         GLFWResource.cpp GLFWResource.h
+        Image.cpp Image.h
         utils.cpp utils.h
         ShaderObjects.h
+        GLFWInclude.h
         GLMInclude.h
-        debug.cpp debug.h
-        STBInclude.h
-        Image.cpp Image.h)
+        STBInclude.h)
 
 add_shader(vulkan_tutor shader.vert)
 add_shader(vulkan_tutor shader.frag)
