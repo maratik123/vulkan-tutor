@@ -1,63 +1,23 @@
-#ifndef VULKAN_TUTOR_HELLOTRIANGLE_H
-#define VULKAN_TUTOR_HELLOTRIANGLE_H
+#ifndef VULKAN_TUTOR_BASEGRAPHICS_H
+#define VULKAN_TUTOR_BASEGRAPHICS_H
 
 #include <optional>
 #include <chrono>
 
 #include "GLFWInclude.h"
 
+#include "Common.h"
 #include "GLFWWindow.h"
-#include "debug.h"
+#include "Debug.h"
+#include "SizeDependentResources.h"
 
-struct QueueFamilyIndices {
-    std::optional<uint32_t> graphicsFamily{};
-    std::optional<uint32_t> presentFamily{};
-    std::optional<uint32_t> transferFamily{};
-
-    [[nodiscard]] constexpr bool isComplete() const {
-        return graphicsFamily.has_value() && presentFamily.has_value() && transferFamily.has_value();
-    }
-};
-
-struct SwapChainSupportDetails {
-    vk::SurfaceCapabilitiesKHR capabilities{};
-    std::vector<vk::SurfaceFormatKHR> formats{};
-    std::vector<vk::PresentModeKHR> presentModes{};
-};
-
-struct SwapChain {
-    vk::UniqueSwapchainKHR swapChain{};
-    vk::Format imageFormat{};
-    vk::Extent2D extent{};
-};
-
-struct BufferWithMemory {
-    vk::UniqueDeviceMemory bufferMemory{};
-    vk::UniqueBuffer buffer{};
-};
-
-struct ImageWithMemory {
-    vk::UniqueDeviceMemory imageMemory{};
-    vk::UniqueImage image{};
-};
-
-struct SwitchLayout {
-    vk::ImageLayout oldLayout{};
-    vk::ImageLayout newLayout{};
-
-    bool operator ==(const SwitchLayout &other) const {
-        return oldLayout == other.oldLayout && newLayout == other.newLayout;
-    };
-};
-
-class HelloTriangle {
+class BaseGraphics {
 public:
-    HelloTriangle();
-    ~HelloTriangle();
+    BaseGraphics();
+    ~BaseGraphics();
     void run();
 
 private:
-    using OptRefUniqueFence = std::optional<std::reference_wrapper<vk::UniqueFence>>;
     static constexpr int maxFramesInFlight = 2;
 
     [[nodiscard]] PFN_vkGetInstanceProcAddr getVkGetInstanceProcAddr() const;
@@ -72,29 +32,12 @@ private:
     [[nodiscard]] SwapChainSupportDetails querySwapChainSupport() const {
         return querySwapChainSupport(physicalDevice);
     }
-    [[nodiscard]] SwapChain createSwapChain() const;
-    [[nodiscard]] std::vector<vk::UniqueImageView> createSwapChainImageViews() const;
-    [[nodiscard]] vk::UniquePipeline createGraphicsPipeline() const;
-    [[nodiscard]] vk::UniqueShaderModule createShaderModule(const std::vector<char> &code) const;
-    [[nodiscard]] vk::UniquePipelineLayout createPipelineLayout() const;
-    [[nodiscard]] vk::UniqueRenderPass createRenderPass() const;
-    [[nodiscard]] std::vector<vk::UniqueFramebuffer> createFramebuffers() const;
     [[nodiscard]] vk::UniqueCommandPool createCommandPool(std::optional<uint32_t> queueFamily,
                                                           vk::CommandPoolCreateFlags commandPoolCreateFlags) const;
-    [[nodiscard]] std::vector<vk::UniqueCommandBuffer> createCommandBuffers() const;
     [[nodiscard]] vk::UniqueFence createFence() const {
         return logicalDevice->createFenceUnique(vk::FenceCreateInfo(vk::FenceCreateFlagBits::eSignaled));
     }
-    [[nodiscard]] std::vector<OptRefUniqueFence> createImageFenceReferences() const {
-        return std::vector<HelloTriangle::OptRefUniqueFence>(swapChainImages.size());
-    }
-    [[nodiscard]] std::vector<vk::Image> getSwapChainImages() const {
-        return logicalDevice->getSwapchainImagesKHR(*swapChain.swapChain);
-    }
-    void cleanupSwapChain();
     void recreateSwapChain();
-    void drawFrame();
-    [[nodiscard]] vk::Extent2D chooseSwapExtent(const vk::SurfaceCapabilitiesKHR &capabilities) const;
     static void framebufferResizeCallback(void* userPointer, int width, int height);
     [[nodiscard]] BufferWithMemory createBuffer(vk::DeviceSize size, vk::BufferUsageFlags usage,
                                                 vk::MemoryPropertyFlags properties) const;
@@ -104,10 +47,6 @@ private:
     template<typename CopyCommand, typename FlushBuffer>
     void singleTimeCommand(CopyCommand copyCommand, FlushBuffer flushBuffer) const;
     [[nodiscard]] vk::UniqueDescriptorSetLayout createDescriptorSetLayout() const;
-    [[nodiscard]] std::vector<BufferWithMemory> createUniformBuffers() const;
-    void updateUniformBuffer(uint32_t imageIndex);
-    [[nodiscard]] vk::UniqueDescriptorPool createDescriptorPool() const;
-    [[nodiscard]] std::vector<vk::UniqueDescriptorSet> createDescriptorSets() const;
     void copyViaStagingBuffer(const void *src, size_t size, const BufferWithMemory &dst) const;
     template<typename CopyCommandFactory>
     void copyViaStagingBuffer(const void *src, size_t size, CopyCommandFactory copyCommandFactory) const;
@@ -133,32 +72,22 @@ private:
     vk::Queue graphicsQueue;
     vk::Queue presentQueue;
     vk::Queue transferQueue;
-    SwapChain swapChain;
-    std::vector<vk::Image> swapChainImages;
-    std::vector<vk::UniqueImageView> swapChainImageViews;
-    vk::UniqueRenderPass renderPass;
     vk::UniqueDescriptorSetLayout descriptorSetLayout;
-    vk::UniquePipelineLayout pipelineLayout;
-    vk::UniquePipeline graphicsPipeline;
-    std::vector<vk::UniqueFramebuffer> swapChainFramebuffers;
     vk::UniqueCommandPool commandPool;
     vk::UniqueCommandPool transferCommandPool;
     vk::UniqueCommandBuffer transferCommandBuffer;
     BufferWithMemory vertexBuffer;
     BufferWithMemory indexBuffer;
-    std::vector<BufferWithMemory> uniformBuffers;
     ImageWithMemory textureImage;
     vk::UniqueImageView textureImageView;
     vk::UniqueSampler textureSampler;
-    vk::UniqueDescriptorPool descriptorPool;
-    std::vector<vk::UniqueDescriptorSet> descriptorSets;
-    std::vector<vk::UniqueCommandBuffer> commandBuffers;
     std::array<vk::UniqueSemaphore, maxFramesInFlight> imageAvailableSemaphore;
     std::array<vk::UniqueSemaphore, maxFramesInFlight> renderFinishedSemaphore;
     std::array<vk::UniqueFence, maxFramesInFlight> inFlightFences;
-    std::vector<OptRefUniqueFence> imagesInFlight;
+    SizeDependentResources res;
     size_t currentFrame;
-    bool framebufferResized;
+
+    friend class SizeDependentResources;
 };
 
-#endif //VULKAN_TUTOR_HELLOTRIANGLE_H
+#endif //VULKAN_TUTOR_BASEGRAPHICS_H

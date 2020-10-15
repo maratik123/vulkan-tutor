@@ -3,7 +3,7 @@
 
 #include <vulkan/vulkan.hpp>
 
-#include "utils.h"
+#include "Utils.h"
 
 namespace debug {
     using DynamicUniqueDebugUtilsMessengerEXT = vk::UniqueHandle<vk::DebugUtilsMessengerEXT, vk::DispatchLoaderDynamic>;

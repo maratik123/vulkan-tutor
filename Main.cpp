@@ -1,13 +1,13 @@
 #include <iostream>
 
 #include "GLFWResource.h"
-#include "HelloTriangle.h"
+#include "BaseGraphics.h"
 
 namespace {
     void actualMain() {
         GLFWResource glfwResource{};
 
-        HelloTriangle app{};
+        BaseGraphics app{};
 
         app.run();
     }

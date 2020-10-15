@@ -1,6 +1,6 @@
 #include "GLFWWindow.h"
 
-#include "debug.h"
+#include "Debug.h"
 
 void GLFWWindow::framebufferResizeCallback(GLFWwindow *window, int width, int height) {
     auto *_this = static_cast<GLFWWindow *>(glfwGetWindowUserPointer(window));

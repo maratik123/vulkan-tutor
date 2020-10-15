@@ -45,17 +45,19 @@ function(add_texture TARGET TEXTURE)
 endfunction(add_texture)
 
 add_executable(vulkan_tutor
-        HelloTriangle.cpp HelloTriangle.h
-        debug.cpp debug.h
-        main.cpp
+        BaseGraphics.cpp BaseGraphics.h
+        SizeDependentResources.cpp SizeDependentResources.h
+        Debug.cpp Debug.h
+        Main.cpp
         GLFWWindow.cpp GLFWWindow.h
         GLFWResource.cpp GLFWResource.h
         Image.cpp Image.h
-        utils.cpp utils.h
+        Utils.cpp Utils.h
         ShaderObjects.h
         GLFWInclude.h
         GLMInclude.h
-        STBInclude.h)
+        STBInclude.h
+        Common.h)
 
 add_shader(vulkan_tutor shader.vert)
 add_shader(vulkan_tutor shader.frag)
