@@ -9,7 +9,7 @@
 
 namespace so {
     struct Vertex {
-        glm::vec2 pos{};
+        glm::vec3 pos{};
         glm::vec3 color{};
         glm::vec2 texCoord{};
 
@@ -26,7 +26,7 @@ namespace so {
                             vk::VertexInputAttributeDescription(
                                     0,
                                     0,
-                                    vk::Format::eR32G32Sfloat,
+                                    vk::Format::eR32G32B32Sfloat,
                                     offsetof(Vertex, pos)
                             ),
                             vk::VertexInputAttributeDescription(
@@ -70,10 +70,10 @@ namespace so {
     };
 
     constexpr std::array<Vertex, 4> vertices{{
-                                                     {{-0.5f, -0.5f}, {1.0f, 0.0f, 0.0f}, {0.0f, 0.0f}},
-                                                     {{0.5f, -0.5f}, {0.0f, 1.0f, 0.0f}, {1.0f, 0.0f}},
-                                                     {{0.5f, 0.5f}, {0.0f, 0.0f, 1.0f}, {1.0f, 1.0f}},
-                                                     {{-0.5f, 0.5f}, {1.0f, 1.0f, 1.0f}, {0.0f, 1.0f}}
+                                                     {{-0.5f, -0.5f, 0.0f}, {1.0f, 0.0f, 0.0f}, {0.0f, 0.0f}},
+                                                     {{0.5f, -0.5f, 0.0f}, {0.0f, 1.0f, 0.0f}, {1.0f, 0.0f}},
+                                                     {{0.5f, 0.5f, 0.0f}, {0.0f, 0.0f, 1.0f}, {1.0f, 1.0f}},
+                                                     {{-0.5f, 0.5f, 0.0f}, {1.0f, 1.0f, 1.0f}, {0.0f, 1.0f}}
                                              }};
     constexpr std::array<uint16_t, 6> indices{{
                                                       0, 1, 2, 2, 3, 0
