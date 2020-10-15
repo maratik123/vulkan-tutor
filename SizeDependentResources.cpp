@@ -26,6 +26,8 @@ SizeDependentResources::SizeDependentResources(BaseGraphics &base)
         : base(base),
           framebufferResized(false),
           swapChain(createSwapChain()),
+          depthImage(createDepthImage()),
+          depthImageView(createDepthImageView()),
           swapChainImages(getSwapChainImages()),
           swapChainImageViews(createSwapChainImageViews()),
           renderPass(createRenderPass()),
@@ -37,6 +39,46 @@ SizeDependentResources::SizeDependentResources(BaseGraphics &base)
           descriptorSets(createDescriptorSets()),
           commandBuffers(createCommandBuffers()),
           imagesInFlight(createImageFenceReferences()) {
+}
+
+SizeDependentResources &SizeDependentResources::operator =(SizeDependentResources &&other) noexcept {
+    if (this == &other) {
+        return *this;
+    }
+    assert(&base == &other.base);
+
+    imagesInFlight.clear();
+    commandBuffers.clear();
+    descriptorSets.clear();
+    descriptorPool.reset();
+    uniformBuffers.clear();
+    swapChainFramebuffers.clear();
+    graphicsPipeline.reset();
+    pipelineLayout.reset();
+    renderPass.reset();
+    swapChainImageViews.clear();
+    swapChainImages.clear();
+    depthImageView.reset();
+    depthImage = {};
+
+    framebufferResized = other.framebufferResized;
+    swapChain = std::move(other.swapChain);
+
+    depthImage = std::move(other.depthImage);
+    depthImageView = std::move(other.depthImageView);
+    swapChainImages = std::move(other.swapChainImages);
+    swapChainImageViews = std::move(other.swapChainImageViews);
+    renderPass = std::move(other.renderPass);
+    pipelineLayout = std::move(other.pipelineLayout);
+    graphicsPipeline = std::move(other.graphicsPipeline);
+    swapChainFramebuffers = std::move(other.swapChainFramebuffers);
+    uniformBuffers = std::move(other.uniformBuffers);
+    descriptorPool = std::move(other.descriptorPool);
+    descriptorSets = std::move(other.descriptorSets);
+    commandBuffers = std::move(other.commandBuffers);
+    imagesInFlight = std::move(other.imagesInFlight);
+
+    return *this;
 }
 
 [[nodiscard]] std::vector<OptRefUniqueFence> SizeDependentResources::createImageFenceReferences() const {
@@ -52,7 +94,7 @@ std::vector<vk::UniqueImageView> SizeDependentResources::createSwapChainImageVie
     result.reserve(swapChainImages.size());
 
     for (const auto image : swapChainImages) {
-        result.emplace_back(base.createImageView(image, swapChain.imageFormat));
+        result.emplace_back(base.createImageView(image, swapChain.imageFormat, vk::ImageAspectFlagBits::eColor));
     }
 
     return result;
@@ -159,6 +201,18 @@ vk::UniquePipeline SizeDependentResources::createGraphicsPipeline() const {
             &colorBlendAttachment,
             {0.0f, 0.0f, 0.0f, 0.0f}
     );
+    vk::PipelineDepthStencilStateCreateInfo depthStencil(
+            {},
+            VK_TRUE,
+            VK_TRUE,
+            vk::CompareOp::eLess,
+            VK_FALSE,
+            VK_FALSE,
+            {},
+            {},
+            0.0f,
+            1.0f
+    );
     return device().createGraphicsPipelineUnique({}, vk::GraphicsPipelineCreateInfo(
             {},
             2,
@@ -169,7 +223,7 @@ vk::UniquePipeline SizeDependentResources::createGraphicsPipeline() const {
             &viewportState,
             &rasterizer,
             &multisampling,
-            nullptr,
+            &depthStencil,
             &colorBlending,
             nullptr,
             *pipelineLayout,
@@ -192,9 +246,27 @@ vk::UniqueRenderPass SizeDependentResources::createRenderPass() const {
             vk::ImageLayout::eUndefined,
             vk::ImageLayout::ePresentSrcKHR
     );
+    vk::AttachmentDescription depthAttachment(
+            {},
+            base.depthFormat,
+            vk::SampleCountFlagBits::e1,
+            vk::AttachmentLoadOp::eClear,
+            vk::AttachmentStoreOp::eDontCare,
+            vk::AttachmentLoadOp::eDontCare,
+            vk::AttachmentStoreOp::eDontCare,
+            vk::ImageLayout::eUndefined,
+            vk::ImageLayout::eDepthStencilAttachmentOptimal
+    );
+    std::array<vk::AttachmentDescription, 2> attachments {
+            colorAttachment, depthAttachment
+    };
     vk::AttachmentReference colorAttachmentReference(
             0,
             vk::ImageLayout::eColorAttachmentOptimal
+    );
+    vk::AttachmentReference depthAttachmentReference(
+            1,
+            vk::ImageLayout::eDepthStencilAttachmentOptimal
     );
     vk::SubpassDescription subpass(
             {},
@@ -202,7 +274,11 @@ vk::UniqueRenderPass SizeDependentResources::createRenderPass() const {
             0,
             nullptr,
             1,
-            &colorAttachmentReference
+            &colorAttachmentReference,
+            nullptr,
+            &depthAttachmentReference,
+            0,
+            nullptr
     );
     vk::SubpassDependency dependency(
             VK_SUBPASS_EXTERNAL,
@@ -210,12 +286,13 @@ vk::UniqueRenderPass SizeDependentResources::createRenderPass() const {
             vk::PipelineStageFlagBits::eColorAttachmentOutput,
             vk::PipelineStageFlagBits::eColorAttachmentOutput,
             {},
-            vk::AccessFlagBits::eColorAttachmentWrite
+            vk::AccessFlagBits::eColorAttachmentWrite,
+            {}
     );
     return device().createRenderPassUnique(vk::RenderPassCreateInfo(
             {},
-            1,
-            &colorAttachment,
+            attachments.size(),
+            attachments.data(),
             1,
             &subpass,
             1,
@@ -229,11 +306,14 @@ std::vector<vk::UniqueFramebuffer> SizeDependentResources::createFramebuffers() 
     result.reserve(swapChainImageViews.size());
 
     for (const auto &imageView : swapChainImageViews) {
+        std::array<vk::ImageView, 2> attachments {
+            *imageView, *depthImageView
+        };
         result.emplace_back(device().createFramebufferUnique(vk::FramebufferCreateInfo(
                 {},
                 *renderPass,
-                1,
-                &*imageView,
+                attachments.size(),
+                attachments.data(),
                 swapChain.extent.width,
                 swapChain.extent.height,
                 1
@@ -250,6 +330,13 @@ std::vector<vk::UniqueCommandBuffer> SizeDependentResources::createCommandBuffer
             swapChainFramebuffers.size()
     ));
 
+    std::array<vk::ClearValue, 2> clearValues {
+        vk::ClearValue(vk::ClearColorValue(std::array<float, 4>{
+                        0.0f, 0.0f, 0.0f, 1.0f
+        })),
+        vk::ClearValue(vk::ClearDepthStencilValue(1.0f, 0))
+    };
+
     for (uint32_t i = 0; i < commandBuffers_.size(); ++i) {
         const auto &commandBuffer = commandBuffers_[i];
 
@@ -258,10 +345,6 @@ std::vector<vk::UniqueCommandBuffer> SizeDependentResources::createCommandBuffer
                 nullptr
         ));
 
-        vk::ClearValue clearColor(vk::ClearColorValue(std::array<float, 4>{
-                0.0f, 0.0f, 0.0f, 1.0f
-        }));
-
         commandBuffer->beginRenderPass(vk::RenderPassBeginInfo(
                 *renderPass,
                 *swapChainFramebuffers[i],
@@ -269,8 +352,8 @@ std::vector<vk::UniqueCommandBuffer> SizeDependentResources::createCommandBuffer
                         {0, 0},
                         swapChain.extent
                 ),
-                1,
-                &clearColor
+                clearValues.size(),
+                clearValues.data()
         ), vk::SubpassContents::eInline);
         commandBuffer->bindPipeline(vk::PipelineBindPoint::eGraphics, *graphicsPipeline);
         commandBuffer->bindVertexBuffers(0, {*base.vertexBuffer.buffer}, {0});
@@ -324,48 +407,12 @@ AfterDrawAction SizeDependentResources::drawFrame() {
     } catch (const vk::OutOfDateKHRError &e) {
         return AfterDrawAction::RecreateSwapChain;
     }
-    if (result == vk::Result::eSuboptimalKHR || base.res.framebufferResized) {
+    if (result == vk::Result::eSuboptimalKHR || framebufferResized) {
         return AfterDrawAction::RecreateSwapChain;
     }
     base.currentFrame = (base.currentFrame + 1) % BaseGraphics::maxFramesInFlight;
     return AfterDrawAction::Noop;
 }
-
-SizeDependentResources &SizeDependentResources::operator =(SizeDependentResources &&other) noexcept {
-    if (this == &other) {
-        return *this;
-    }
-    assert(&base == &other.base);
-    imagesInFlight.clear();
-    commandBuffers.clear();
-    descriptorSets.clear();
-    descriptorPool.reset();
-    uniformBuffers.clear();
-    swapChainFramebuffers.clear();
-    graphicsPipeline.reset();
-    pipelineLayout.reset();
-    renderPass.reset();
-    swapChainImageViews.clear();
-    swapChainImages.clear();
-
-    framebufferResized = other.framebufferResized;
-    swapChain = std::move(other.swapChain);
-
-    swapChainImages = std::move(other.swapChainImages);
-    swapChainImageViews = std::move(other.swapChainImageViews);
-    renderPass = std::move(other.renderPass);
-    pipelineLayout = std::move(other.pipelineLayout);
-    graphicsPipeline = std::move(other.graphicsPipeline);
-    swapChainFramebuffers = std::move(other.swapChainFramebuffers);
-    uniformBuffers = std::move(other.uniformBuffers);
-    descriptorPool = std::move(other.descriptorPool);
-    descriptorSets = std::move(other.descriptorSets);
-    commandBuffers = std::move(other.commandBuffers);
-    imagesInFlight = std::move(other.imagesInFlight);
-
-    return *this;
-}
-
 
 std::vector<BufferWithMemory> SizeDependentResources::createUniformBuffers() const {
     const vk::DeviceSize bufferSize = sizeof(so::UnifiedBufferObject);
@@ -546,4 +593,20 @@ vk::Extent2D SizeDependentResources::chooseSwapExtent(const vk::SurfaceCapabilit
 
 vk::Device SizeDependentResources::device() const {
     return *base.device;
+}
+
+ImageWithMemory SizeDependentResources::createDepthImage() const {
+    auto depthImage_ = base.createImage(swapChain.extent.width, swapChain.extent.height, base.depthFormat,
+                            vk::ImageTiling::eOptimal, vk::ImageUsageFlagBits::eDepthStencilAttachment,
+                            vk::MemoryPropertyFlagBits::eDeviceLocal);
+
+    base.transitionImageLayout(*depthImage_.image, base.depthFormat, SwitchLayout {
+            vk::ImageLayout::eUndefined, vk::ImageLayout::eDepthStencilAttachmentOptimal
+    });
+
+    return depthImage_;
+}
+
+vk::UniqueImageView SizeDependentResources::createDepthImageView() const {
+    return base.createImageView(*depthImage.image, base.depthFormat, vk::ImageAspectFlagBits::eDepth);
 }

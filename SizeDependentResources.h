@@ -39,8 +39,12 @@ private:
     [[nodiscard]] vk::UniquePipelineLayout createPipelineLayout() const;
     [[nodiscard]] vk::Extent2D chooseSwapExtent(const vk::SurfaceCapabilitiesKHR &capabilities) const;
     [[nodiscard]] vk::Device device() const;
+    [[nodiscard]] ImageWithMemory createDepthImage() const;
+    [[nodiscard]] vk::UniqueImageView createDepthImageView() const;
 
     SwapChain swapChain;
+    ImageWithMemory depthImage;
+    vk::UniqueImageView depthImageView;
     std::vector<vk::Image> swapChainImages;
     std::vector<vk::UniqueImageView> swapChainImageViews;
     vk::UniqueRenderPass renderPass;

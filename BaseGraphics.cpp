@@ -71,11 +71,15 @@ namespace {
 
         return vk::createInstanceUnique(createInfo);
     }
+
+    constexpr bool hasStencilComponent(vk::Format format) {
+        return format == vk::Format::eD32SfloatS8Uint || format == vk::Format::eD24UnormS8Uint;
+    }
 }
 
 BaseGraphics::BaseGraphics()
         : startTime(std::chrono::high_resolution_clock::now()),
-          window(framebufferResizeCallback, this),
+          window(framebufferResizeCallback, &res),
           instance(createInstance()),
           dl{},
           dldi(*instance, getVkGetInstanceProcAddr()),
@@ -95,7 +99,8 @@ BaseGraphics::BaseGraphics()
           vertexBuffer(createVertexBuffer()),
           indexBuffer(createIndexBuffer()),
           textureImage(createTextureImage()),
-          textureImageView(createImageView(*textureImage.image, vk::Format::eR8G8B8A8Srgb)),
+          textureImageView(createImageView(*textureImage.image, vk::Format::eR8G8B8A8Srgb,
+                                           vk::ImageAspectFlagBits::eColor)),
           textureSampler(createTextureSampler()),
           imageAvailableSemaphore({device->createSemaphoreUnique({}),
                                    device->createSemaphoreUnique({})}),
@@ -103,6 +108,7 @@ BaseGraphics::BaseGraphics()
                                    device->createSemaphoreUnique({})}),
           inFlightFences({createFence(),
                           createFence()}),
+          depthFormat(findDepthFormat()),
           res(*this),
           currentFrame(0) {
     std::cout << print_time << "Initialized" << std::endl;
@@ -187,7 +193,7 @@ vk::PhysicalDevice BaseGraphics::pickPhysicalDevice() const {
     for (auto deviceType : suitableDeviceTypesInPriority) {
         const auto it = std::find_if(
                 devices.cbegin(), devices.cend(),
-                [this, deviceType](const auto &device) { return isDeviceSuitable(device, deviceType); }
+                [this, deviceType](const auto &device_) { return isDeviceSuitable(device_, deviceType); }
         );
         if (it != devices.cend()) {
             return *it;
@@ -259,8 +265,8 @@ void BaseGraphics::recreateSwapChain() {
 }
 
 void BaseGraphics::framebufferResizeCallback(void *userPointer, int /*width*/, int /*height*/) {
-    auto *_this = static_cast<BaseGraphics *>(userPointer);
-    _this->res.framebufferResized = true;
+    auto *res = static_cast<SizeDependentResources *>(userPointer);
+    res->framebufferResized = true;
 }
 
 uint32_t BaseGraphics::findMemoryType(uint32_t typeFilter, vk::MemoryPropertyFlags properties) const {
@@ -386,7 +392,7 @@ ImageWithMemory BaseGraphics::createTextureImage() const {
             vk::MemoryPropertyFlagBits::eDeviceLocal
     );
 
-    transitionImageLayout(*textureImage_.image, SwitchLayout{
+    transitionImageLayout(*textureImage_.image, vk::Format::eR8G8B8A8Srgb, SwitchLayout{
             vk::ImageLayout::eUndefined,
             vk::ImageLayout::eTransferDstOptimal});
 
@@ -412,7 +418,7 @@ ImageWithMemory BaseGraphics::createTextureImage() const {
         };
     });
 
-    transitionImageLayout(*textureImage_.image, SwitchLayout{
+    transitionImageLayout(*textureImage_.image, vk::Format::eR8G8B8A8Srgb, SwitchLayout{
             vk::ImageLayout::eTransferDstOptimal,
             vk::ImageLayout::eShaderReadOnlyOptimal});
 
@@ -453,11 +459,21 @@ ImageWithMemory BaseGraphics::createImage(uint32_t width, uint32_t height, vk::F
     };
 }
 
-void BaseGraphics::transitionImageLayout(vk::Image image, SwitchLayout switchLayout) const {
+void BaseGraphics::transitionImageLayout(vk::Image image, vk::Format format, SwitchLayout switchLayout) const {
     vk::AccessFlags srcAccessMask;
     vk::AccessFlags dstAccessMask;
     vk::PipelineStageFlags srcStage;
     vk::PipelineStageFlags dstStage;
+    vk::ImageAspectFlags aspectMask;
+
+    if (switchLayout.newLayout == vk::ImageLayout::eDepthStencilAttachmentOptimal) {
+        aspectMask = vk::ImageAspectFlagBits::eDepth;
+        if (hasStencilComponent(format)) {
+            aspectMask |= vk::ImageAspectFlagBits::eStencil;
+        }
+    } else {
+        aspectMask = vk::ImageAspectFlagBits::eColor;
+    }
 
     if (switchLayout == SwitchLayout{
             vk::ImageLayout::eUndefined,
@@ -473,6 +489,15 @@ void BaseGraphics::transitionImageLayout(vk::Image image, SwitchLayout switchLay
         dstAccessMask = vk::AccessFlagBits::eShaderRead;
         srcStage = vk::PipelineStageFlagBits::eTransfer;
         dstStage = vk::PipelineStageFlagBits::eFragmentShader;
+    } else if (switchLayout == SwitchLayout{
+        vk::ImageLayout::eUndefined,
+        vk::ImageLayout::eDepthStencilAttachmentOptimal
+    }) {
+        srcAccessMask = {};
+        dstAccessMask = vk::AccessFlagBits::eDepthStencilAttachmentRead
+                        | vk::AccessFlagBits::eDepthStencilAttachmentWrite;
+        srcStage = vk::PipelineStageFlagBits::eTopOfPipe;
+        dstStage = vk::PipelineStageFlagBits::eEarlyFragmentTests;
     } else {
         throw std::invalid_argument("unsupported layout transition!");
     }
@@ -486,7 +511,7 @@ void BaseGraphics::transitionImageLayout(vk::Image image, SwitchLayout switchLay
             VK_QUEUE_FAMILY_IGNORED,
             image,
             vk::ImageSubresourceRange(
-                    vk::ImageAspectFlagBits::eColor,
+                    aspectMask,
                     0,
                     1,
                     0,
@@ -504,7 +529,8 @@ void BaseGraphics::transitionImageLayout(vk::Image image, SwitchLayout switchLay
     }, [] {});
 }
 
-vk::UniqueImageView BaseGraphics::createImageView(vk::Image image, vk::Format format) const {
+vk::UniqueImageView BaseGraphics::createImageView(vk::Image image, vk::Format format,
+                                                  vk::ImageAspectFlags aspectFlags) const {
     return device->createImageViewUnique(vk::ImageViewCreateInfo(
             {},
             image,
@@ -517,7 +543,7 @@ vk::UniqueImageView BaseGraphics::createImageView(vk::Image image, vk::Format fo
                     vk::ComponentSwizzle::eIdentity
             },
             {
-                    vk::ImageAspectFlagBits::eColor,
+                    aspectFlags,
                     0,
                     1,
                     0,
@@ -545,4 +571,34 @@ vk::UniqueSampler BaseGraphics::createTextureSampler() const {
             vk::BorderColor::eIntOpaqueBlack,
             VK_FALSE
     ));
+}
+
+vk::Format BaseGraphics::findSupportedFormat(vk::ArrayProxy<const vk::Format> candidates, vk::ImageTiling tiling,
+                                             vk::FormatFeatureFlags features) const {
+    switch (tiling) {
+        case vk::ImageTiling::eLinear: {
+            const auto it = std::find_if(candidates.begin(), candidates.end(), [this, features](auto format) {
+                const auto props = physicalDevice.getFormatProperties(format);
+                return (props.linearTilingFeatures & features) == features;
+            });
+            if (it != candidates.end()) {
+                return *it;
+            }
+            break;
+        }
+        case vk::ImageTiling::eOptimal: {
+            const auto it = std::find_if(candidates.begin(), candidates.end(), [this, features](auto format) {
+                const auto props = physicalDevice.getFormatProperties(format);
+                return (props.optimalTilingFeatures & features) == features;
+            });
+            if (it != candidates.end()) {
+                return *it;
+            }
+            break;
+        }
+        default:
+            break;
+    }
+
+    throw std::runtime_error("failed to find supported format!");
 }

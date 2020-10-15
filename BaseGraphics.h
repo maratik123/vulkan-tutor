@@ -54,9 +54,16 @@ private:
     [[nodiscard]] ImageWithMemory createImage(uint32_t width, uint32_t height, vk::Format format,
                                               vk::ImageTiling tiling, vk::ImageUsageFlags usage,
                                               vk::MemoryPropertyFlags properties) const;
-    void transitionImageLayout(vk::Image image, SwitchLayout switchLayout) const;
-    [[nodiscard]] vk::UniqueImageView createImageView(vk::Image image, vk::Format format) const;
+    void transitionImageLayout(vk::Image image, vk::Format format, SwitchLayout switchLayout) const;
+    [[nodiscard]] vk::UniqueImageView createImageView(vk::Image image, vk::Format format,
+                                                      vk::ImageAspectFlags aspectFlags) const;
     [[nodiscard]] vk::UniqueSampler createTextureSampler() const;
+    [[nodiscard]] vk::Format findSupportedFormat(vk::ArrayProxy<const vk::Format> candidates, vk::ImageTiling tiling,
+                                                 vk::FormatFeatureFlags features) const;
+    [[nodiscard]] vk::Format findDepthFormat() const {
+        return findSupportedFormat({vk::Format::eD32Sfloat, vk::Format::eD32SfloatS8Uint, vk::Format::eD24UnormS8Uint},
+                                   vk::ImageTiling::eOptimal, vk::FormatFeatureFlagBits::eDepthStencilAttachment);
+    }
 
     std::chrono::high_resolution_clock::time_point startTime;
     GLFWWindow window;
@@ -83,6 +90,7 @@ private:
     std::array<vk::UniqueSemaphore, maxFramesInFlight> imageAvailableSemaphore;
     std::array<vk::UniqueSemaphore, maxFramesInFlight> renderFinishedSemaphore;
     std::array<vk::UniqueFence, maxFramesInFlight> inFlightFences;
+    vk::Format depthFormat;
     SizeDependentResources res;
     size_t currentFrame;
 
