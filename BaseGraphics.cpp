@@ -171,7 +171,7 @@ PFN_vkGetInstanceProcAddr BaseGraphics::getVkGetInstanceProcAddr() const {
 
 void BaseGraphics::run() {
     window.mainLoop([this]{
-        if (res.drawFrame() == DrawResult::RecreateSwapChain) {
+        if (res.drawFrame() == AfterDrawAction::RecreateSwapChain) {
             recreateSwapChain();
         }
     });

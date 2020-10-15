@@ -286,14 +286,14 @@ std::vector<vk::UniqueCommandBuffer> SizeDependentResources::createCommandBuffer
     return commandBuffers_;
 }
 
-DrawResult SizeDependentResources::drawFrame() {
+AfterDrawAction SizeDependentResources::drawFrame() {
     logicalDevice.waitForFences({*base.inFlightFences[base.currentFrame]}, VK_TRUE, UINT64_MAX);
     uint32_t imageIndex;
     try {
         imageIndex = logicalDevice.acquireNextImageKHR(
                 *swapChain.swapChain, UINT64_MAX, *base.imageAvailableSemaphore[base.currentFrame], {});
     } catch (const vk::OutOfDateKHRError &e) {
-        return DrawResult::RecreateSwapChain;
+        return AfterDrawAction::RecreateSwapChain;
     }
     if (imagesInFlight[imageIndex]) {
         logicalDevice.waitForFences({*imagesInFlight[imageIndex]->get()}, VK_TRUE, UINT64_MAX);
@@ -323,13 +323,13 @@ DrawResult SizeDependentResources::drawFrame() {
                 &imageIndex
         ));
     } catch (const vk::OutOfDateKHRError &e) {
-        return DrawResult::RecreateSwapChain;
+        return AfterDrawAction::RecreateSwapChain;
     }
     if (result == vk::Result::eSuboptimalKHR || base.res.framebufferResized) {
-        return DrawResult::RecreateSwapChain;
+        return AfterDrawAction::RecreateSwapChain;
     }
     base.currentFrame = (base.currentFrame + 1) % BaseGraphics::maxFramesInFlight;
-    return DrawResult::NoAction;
+    return AfterDrawAction::Noop;
 }
 
 SizeDependentResources &SizeDependentResources::operator =(SizeDependentResources &&other) noexcept {
@@ -542,4 +542,3 @@ vk::Extent2D SizeDependentResources::chooseSwapExtent(const vk::SurfaceCapabilit
             .setHeight(std::clamp(actualExtent.height,
                                   capabilities.minImageExtent.height, capabilities.maxImageExtent.height));
 }
-

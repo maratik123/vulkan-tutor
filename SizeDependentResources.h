@@ -7,8 +7,8 @@
 
 class BaseGraphics;
 
-enum class DrawResult {
-    NoAction,
+enum class AfterDrawAction {
+    Noop,
     RecreateSwapChain
 };
 
@@ -19,7 +19,7 @@ class SizeDependentResources {
 public:
     explicit SizeDependentResources(BaseGraphics &base);
     SizeDependentResources &operator =(SizeDependentResources &&other) noexcept;
-    DrawResult drawFrame();
+    AfterDrawAction drawFrame();
 
     bool framebufferResized;
 
