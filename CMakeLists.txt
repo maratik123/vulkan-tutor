@@ -65,7 +65,7 @@ find_package(PkgConfig REQUIRED)
 
 pkg_check_modules(GLM REQUIRED glm)
 
-target_include_directories(vulkan_tutor PRIVATE
+target_include_directories(vulkan_tutor SYSTEM PRIVATE
         ${GLM_INCLUDE_DIRS}
         stb)
 target_link_libraries(vulkan_tutor

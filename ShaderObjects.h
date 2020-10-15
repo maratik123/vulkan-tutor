@@ -11,6 +11,7 @@ namespace so {
     struct Vertex {
         glm::vec2 pos{};
         glm::vec3 color{};
+        glm::vec2 texCoord{};
 
         static constexpr vk::VertexInputBindingDescription bindingDescription() {
             return {
@@ -20,20 +21,26 @@ namespace so {
             };
         }
 
-        static constexpr std::array<vk::VertexInputAttributeDescription, 2> getAttributeDescriptions() {
+        static constexpr std::array<vk::VertexInputAttributeDescription, 3> getAttributeDescriptions() {
             return {{
-                            {
+                            vk::VertexInputAttributeDescription(
                                     0,
                                     0,
                                     vk::Format::eR32G32Sfloat,
                                     offsetof(Vertex, pos)
-                            },
-                            {
+                            ),
+                            vk::VertexInputAttributeDescription(
                                     1,
                                     0,
                                     vk::Format::eR32G32B32Sfloat,
                                     offsetof(Vertex, color)
-                            }
+                            ),
+                            vk::VertexInputAttributeDescription(
+                                    2,
+                                    0,
+                                    vk::Format::eR32G32Sfloat,
+                                    offsetof(Vertex, texCoord)
+                            )
                     }};
         }
     };
@@ -51,11 +58,22 @@ namespace so {
         );
     };
 
+    constexpr vk::DescriptorSetLayoutBinding samplerLayoutBinding = vk::DescriptorSetLayoutBinding(
+            1,
+            vk::DescriptorType::eCombinedImageSampler,
+            1,
+            vk::ShaderStageFlagBits::eFragment
+    );
+
+    constexpr std::array<vk::DescriptorSetLayoutBinding, 2> layoutBindings = {
+            UnifiedBufferObject::uboLayoutBinding, samplerLayoutBinding
+    };
+
     constexpr std::array<Vertex, 4> vertices{{
-                                                     {{-0.5f, -0.5f}, {1.0f, 0.0f, 0.0f}},
-                                                     {{0.5f, -0.5f}, {0.0f, 1.0f, 0.0f}},
-                                                     {{0.5f, 0.5f}, {0.0f, 0.0f, 1.0f}},
-                                                     {{-0.5f, 0.5f}, {1.0f, 1.0f, 1.0f}}
+                                                     {{-0.5f, -0.5f}, {1.0f, 0.0f, 0.0f}, {0.0f, 0.0f}},
+                                                     {{0.5f, -0.5f}, {0.0f, 1.0f, 0.0f}, {1.0f, 0.0f}},
+                                                     {{0.5f, 0.5f}, {0.0f, 0.0f, 1.0f}, {1.0f, 1.0f}},
+                                                     {{-0.5f, 0.5f}, {1.0f, 1.0f, 1.0f}, {0.0f, 1.0f}}
                                              }};
     constexpr std::array<uint16_t, 6> indices{{
                                                       0, 1, 2, 2, 3, 0

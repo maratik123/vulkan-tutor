@@ -147,12 +147,12 @@ private:
     BufferWithMemory vertexBuffer;
     BufferWithMemory indexBuffer;
     std::vector<BufferWithMemory> uniformBuffers;
-    vk::UniqueDescriptorPool descriptorPool;
-    std::vector<vk::UniqueDescriptorSet> descriptorSets;
-    std::vector<vk::UniqueCommandBuffer> commandBuffers;
     ImageWithMemory textureImage;
     vk::UniqueImageView textureImageView;
     vk::UniqueSampler textureSampler;
+    vk::UniqueDescriptorPool descriptorPool;
+    std::vector<vk::UniqueDescriptorSet> descriptorSets;
+    std::vector<vk::UniqueCommandBuffer> commandBuffers;
     std::array<vk::UniqueSemaphore, maxFramesInFlight> imageAvailableSemaphore;
     std::array<vk::UniqueSemaphore, maxFramesInFlight> renderFinishedSemaphore;
     std::array<vk::UniqueFence, maxFramesInFlight> inFlightFences;

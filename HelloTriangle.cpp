@@ -117,12 +117,12 @@ HelloTriangle::HelloTriangle()
           vertexBuffer(createVertexBuffer()),
           indexBuffer(createIndexBuffer()),
           uniformBuffers(createUniformBuffers()),
-          descriptorPool(createDescriptorPool()),
-          descriptorSets(createDescriptorSets()),
-          commandBuffers(createCommandBuffers()),
           textureImage(createTextureImage()),
           textureImageView(createImageView(*textureImage.image, vk::Format::eR8G8B8A8Srgb)),
           textureSampler(createTextureSampler()),
+          descriptorPool(createDescriptorPool()),
+          descriptorSets(createDescriptorSets()),
+          commandBuffers(createCommandBuffers()),
           imageAvailableSemaphore({logicalDevice->createSemaphoreUnique({}),
                                    logicalDevice->createSemaphoreUnique({})}),
           renderFinishedSemaphore({logicalDevice->createSemaphoreUnique({}),
@@ -748,8 +748,8 @@ void HelloTriangle::singleTimeCommand(CopyCommand copyCommand, FlushBuffer flush
 vk::UniqueDescriptorSetLayout HelloTriangle::createDescriptorSetLayout() const {
     return logicalDevice->createDescriptorSetLayoutUnique(vk::DescriptorSetLayoutCreateInfo(
             {},
-            1,
-            &so::UnifiedBufferObject::uboLayoutBinding
+            so::layoutBindings.size(),
+            so::layoutBindings.data()
     ));
 }
 
@@ -791,12 +791,15 @@ void HelloTriangle::updateUniformBuffer(uint32_t imageIndex) {
 }
 
 vk::UniqueDescriptorPool HelloTriangle::createDescriptorPool() const {
-    vk::DescriptorPoolSize poolSize(vk::DescriptorType::eUniformBuffer, swapChainImages.size());
+    std::array<vk::DescriptorPoolSize, 2> poolSizes{
+            vk::DescriptorPoolSize(vk::DescriptorType::eUniformBuffer, swapChainImages.size()),
+            vk::DescriptorPoolSize(vk::DescriptorType::eCombinedImageSampler, swapChainImages.size())
+    };
     return logicalDevice->createDescriptorPoolUnique(vk::DescriptorPoolCreateInfo(
             vk::DescriptorPoolCreateFlagBits::eFreeDescriptorSet,
             static_cast<uint32_t>(swapChainImages.size()),
-            1,
-            &poolSize
+            poolSizes.size(),
+            poolSizes.data()
     ));
 }
 
@@ -817,16 +820,35 @@ std::vector<vk::UniqueDescriptorSet> HelloTriangle::createDescriptorSets() const
                 sizeof(so::UnifiedBufferObject)
         );
 
-        logicalDevice->updateDescriptorSets({vk::WriteDescriptorSet(
-                *descriptorSets_[i],
-                0,
-                0,
-                1,
-                vk::DescriptorType::eUniformBuffer,
-                nullptr,
-                &bufferInfo,
-                nullptr
-        )}, {});
+        vk::DescriptorImageInfo imageInfo(
+                *textureSampler,
+                *textureImageView,
+                vk::ImageLayout::eShaderReadOnlyOptimal
+        );
+
+        logicalDevice->updateDescriptorSets(
+                {
+                        vk::WriteDescriptorSet(
+                                *descriptorSets_[i],
+                                0,
+                                0,
+                                1,
+                                vk::DescriptorType::eUniformBuffer,
+                                nullptr,
+                                &bufferInfo,
+                                nullptr
+                        ),
+                        vk::WriteDescriptorSet(
+                                *descriptorSets_[i],
+                                1,
+                                0,
+                                1,
+                                vk::DescriptorType::eCombinedImageSampler,
+                                &imageInfo,
+                                nullptr,
+                                nullptr
+                        )
+                }, {});
     }
 
     return descriptorSets_;
