@@ -69,14 +69,19 @@ namespace so {
             UnifiedBufferObject::uboLayoutBinding, samplerLayoutBinding
     };
 
-    constexpr std::array<Vertex, 4> vertices{{
+    constexpr std::array<Vertex, 8> vertices{{
                                                      {{-0.5f, -0.5f, 0.0f}, {1.0f, 0.0f, 0.0f}, {0.0f, 0.0f}},
                                                      {{0.5f, -0.5f, 0.0f}, {0.0f, 1.0f, 0.0f}, {1.0f, 0.0f}},
                                                      {{0.5f, 0.5f, 0.0f}, {0.0f, 0.0f, 1.0f}, {1.0f, 1.0f}},
-                                                     {{-0.5f, 0.5f, 0.0f}, {1.0f, 1.0f, 1.0f}, {0.0f, 1.0f}}
+                                                     {{-0.5f, 0.5f, 0.0f}, {1.0f, 1.0f, 1.0f}, {0.0f, 1.0f}},
+                                                     {{-0.5f, -0.5f, -0.5f}, {1.0f, 0.0f, 0.0f}, {0.0f, 0.0f}},
+                                                     {{0.5f, -0.5f, -0.5f}, {0.0f, 1.0f, 0.0f}, {1.0f, 0.0f}},
+                                                     {{0.5f, 0.5f, -0.5f}, {0.0f, 0.0f, 1.0f}, {1.0f, 1.0f}},
+                                                     {{-0.5f, 0.5f, -0.5f}, {1.0f, 1.0f, 1.0f}, {0.0f, 1.0f}}
                                              }};
-    constexpr std::array<uint16_t, 6> indices{{
-                                                      0, 1, 2, 2, 3, 0
+    constexpr std::array<uint16_t, 12> indices{{
+                                                      0, 1, 2, 2, 3, 0,
+                                                       4, 5, 6, 6, 7, 4,
                                               }};
 
     constexpr size_t verticesSize = sizeof(decltype(vertices)::value_type) * vertices.size();
