@@ -14,7 +14,6 @@ enum class AfterDrawAction {
 
 class SizeDependentResources {
     BaseGraphics &base;
-    const vk::Device logicalDevice;
 
 public:
     explicit SizeDependentResources(BaseGraphics &base);
@@ -39,6 +38,7 @@ private:
     [[nodiscard]] vk::UniqueShaderModule createShaderModule(const std::vector<char> &code) const;
     [[nodiscard]] vk::UniquePipelineLayout createPipelineLayout() const;
     [[nodiscard]] vk::Extent2D chooseSwapExtent(const vk::SurfaceCapabilitiesKHR &capabilities) const;
+    [[nodiscard]] vk::Device device() const;
 
     SwapChain swapChain;
     std::vector<vk::Image> swapChainImages;

@@ -29,8 +29,8 @@ namespace {
         }
     }
 
-    bool checkDeviceExtensionSupport(const vk::PhysicalDevice &device) {
-        const auto availableExtensions = device.enumerateDeviceExtensionProperties();
+    bool checkDeviceExtensionSupport(const vk::PhysicalDevice requestedDevice) {
+        const auto availableExtensions = requestedDevice.enumerateDeviceExtensionProperties();
         std::unordered_set<std::string> availableExtensionNames;
         availableExtensionNames.reserve(availableExtensions.size());
         for (const auto &availableExtension : availableExtensions) {
@@ -83,10 +83,10 @@ BaseGraphics::BaseGraphics()
           surface(window.createSurfaceUnique(*instance)),
           physicalDevice(pickPhysicalDevice()),
           queueFamilyIndices(findQueueFamilies()),
-          logicalDevice(createLogicalDevice()),
-          graphicsQueue(logicalDevice->getQueue(*queueFamilyIndices.graphicsFamily, 0)),
-          presentQueue(logicalDevice->getQueue(*queueFamilyIndices.presentFamily, 0)),
-          transferQueue(logicalDevice->getQueue(*queueFamilyIndices.transferFamily, 0)),
+          device(createLogicalDevice()),
+          graphicsQueue(device->getQueue(*queueFamilyIndices.graphicsFamily, 0)),
+          presentQueue(device->getQueue(*queueFamilyIndices.presentFamily, 0)),
+          transferQueue(device->getQueue(*queueFamilyIndices.transferFamily, 0)),
           descriptorSetLayout(createDescriptorSetLayout()),
           commandPool(createCommandPool(queueFamilyIndices.graphicsFamily, {})),
           transferCommandPool(createCommandPool(queueFamilyIndices.transferFamily,
@@ -97,10 +97,10 @@ BaseGraphics::BaseGraphics()
           textureImage(createTextureImage()),
           textureImageView(createImageView(*textureImage.image, vk::Format::eR8G8B8A8Srgb)),
           textureSampler(createTextureSampler()),
-          imageAvailableSemaphore({logicalDevice->createSemaphoreUnique({}),
-                                   logicalDevice->createSemaphoreUnique({})}),
-          renderFinishedSemaphore({logicalDevice->createSemaphoreUnique({}),
-                                   logicalDevice->createSemaphoreUnique({})}),
+          imageAvailableSemaphore({device->createSemaphoreUnique({}),
+                                   device->createSemaphoreUnique({})}),
+          renderFinishedSemaphore({device->createSemaphoreUnique({}),
+                                   device->createSemaphoreUnique({})}),
           inFlightFences({createFence(),
                           createFence()}),
           res(*this),
@@ -108,7 +108,7 @@ BaseGraphics::BaseGraphics()
     std::cout << print_time << "Initialized" << std::endl;
 }
 
-SwapChainSupportDetails BaseGraphics::querySwapChainSupport(const vk::PhysicalDevice &requestedDevice) const {
+SwapChainSupportDetails BaseGraphics::querySwapChainSupport(const vk::PhysicalDevice requestedDevice) const {
     return {
             requestedDevice.getSurfaceCapabilitiesKHR(*surface),
             requestedDevice.getSurfaceFormatsKHR(*surface),
@@ -116,7 +116,7 @@ SwapChainSupportDetails BaseGraphics::querySwapChainSupport(const vk::PhysicalDe
     };
 }
 
-QueueFamilyIndices BaseGraphics::findQueueFamilies(const vk::PhysicalDevice &requestedDevice) const {
+QueueFamilyIndices BaseGraphics::findQueueFamilies(const vk::PhysicalDevice requestedDevice) const {
     QueueFamilyIndices result{};
     const auto queueFamilies = requestedDevice.getQueueFamilyProperties();
     for (uint32_t i = 0; i < queueFamilies.size(); ++i) {
@@ -143,8 +143,8 @@ QueueFamilyIndices BaseGraphics::findQueueFamilies(const vk::PhysicalDevice &req
     return result;
 }
 
-bool BaseGraphics::isDeviceSuitable(const vk::PhysicalDevice &requestedDevice,
-                                    vk::PhysicalDeviceType desiredDeviceType) const {
+bool BaseGraphics::isDeviceSuitable(const vk::PhysicalDevice requestedDevice,
+                                    const vk::PhysicalDeviceType desiredDeviceType) const {
     if (requestedDevice.getProperties().deviceType != desiredDeviceType) {
         return false;
     }
@@ -175,7 +175,7 @@ void BaseGraphics::run() {
             recreateSwapChain();
         }
     });
-    logicalDevice->waitIdle();
+    device->waitIdle();
 }
 
 vk::PhysicalDevice BaseGraphics::pickPhysicalDevice() const {
@@ -238,7 +238,7 @@ vk::UniqueDevice BaseGraphics::createLogicalDevice() const {
 
 vk::UniqueCommandPool BaseGraphics::createCommandPool(std::optional<uint32_t> queueFamily,
                                                       vk::CommandPoolCreateFlags commandPoolCreateFlags) const {
-    return logicalDevice->createCommandPoolUnique(vk::CommandPoolCreateInfo(
+    return device->createCommandPoolUnique(vk::CommandPoolCreateInfo(
             commandPoolCreateFlags,
             *queueFamily
     ));
@@ -253,7 +253,7 @@ void BaseGraphics::recreateSwapChain() {
         GLFWWindow::waitEvents();
     }
 
-    logicalDevice->waitIdle();
+    device->waitIdle();
 
     res = SizeDependentResources(*this);
 }
@@ -276,21 +276,21 @@ uint32_t BaseGraphics::findMemoryType(uint32_t typeFilter, vk::MemoryPropertyFla
 
 BufferWithMemory BaseGraphics::createBuffer(vk::DeviceSize size, vk::BufferUsageFlags usage,
                                             vk::MemoryPropertyFlags properties) const {
-    auto buffer = logicalDevice->createBufferUnique(vk::BufferCreateInfo{
+    auto buffer = device->createBufferUnique(vk::BufferCreateInfo{
             {},
             size,
             usage,
             vk::SharingMode::eExclusive
     });
 
-    const auto memRequirements = logicalDevice->getBufferMemoryRequirements(*buffer);
+    const auto memRequirements = device->getBufferMemoryRequirements(*buffer);
 
-    auto vertexBufferMemory = logicalDevice->allocateMemoryUnique(vk::MemoryAllocateInfo(
+    auto vertexBufferMemory = device->allocateMemoryUnique(vk::MemoryAllocateInfo(
             memRequirements.size,
             findMemoryType(memRequirements.memoryTypeBits, properties)
     ));
 
-    logicalDevice->bindBufferMemory(*buffer, *vertexBufferMemory, 0);
+    device->bindBufferMemory(*buffer, *vertexBufferMemory, 0);
 
     return {
             std::move(vertexBufferMemory),
@@ -331,7 +331,7 @@ void BaseGraphics::singleTimeCommand(CopyCommand copyCommand, FlushBuffer flushB
 }
 
 vk::UniqueDescriptorSetLayout BaseGraphics::createDescriptorSetLayout() const {
-    return logicalDevice->createDescriptorSetLayoutUnique(vk::DescriptorSetLayoutCreateInfo(
+    return device->createDescriptorSetLayoutUnique(vk::DescriptorSetLayoutCreateInfo(
             {},
             so::layoutBindings.size(),
             so::layoutBindings.data()
@@ -345,13 +345,13 @@ void BaseGraphics::copyViaStagingBuffer(const void *src, size_t size, CopyComman
             vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCached
     );
 
-    void *data = logicalDevice->mapMemory(*stagingBuffer.bufferMemory, 0, size);
+    void *data = device->mapMemory(*stagingBuffer.bufferMemory, 0, size);
     std::memcpy(data, src, size);
 
     singleTimeCommand(copyCommandFactory(stagingBuffer), [this, &stagingBuffer] {
-        logicalDevice->flushMappedMemoryRanges({vk::MappedMemoryRange(*stagingBuffer.bufferMemory, 0, VK_WHOLE_SIZE)});
+        device->flushMappedMemoryRanges({vk::MappedMemoryRange(*stagingBuffer.bufferMemory, 0, VK_WHOLE_SIZE)});
     });
-    logicalDevice->unmapMemory(*stagingBuffer.bufferMemory);
+    device->unmapMemory(*stagingBuffer.bufferMemory);
 }
 
 void BaseGraphics::copyViaStagingBuffer(const void *src, size_t size, const BufferWithMemory &dst) const {
@@ -363,7 +363,7 @@ void BaseGraphics::copyViaStagingBuffer(const void *src, size_t size, const Buff
 }
 
 vk::UniqueCommandBuffer BaseGraphics::createTransferCommandBuffer() const {
-    auto transferCommandBuffers = logicalDevice->allocateCommandBuffersUnique(
+    auto transferCommandBuffers = device->allocateCommandBuffersUnique(
             vk::CommandBufferAllocateInfo(
                     *transferCommandPool,
                     vk::CommandBufferLevel::ePrimary,
@@ -422,7 +422,7 @@ ImageWithMemory BaseGraphics::createTextureImage() const {
 ImageWithMemory BaseGraphics::createImage(uint32_t width, uint32_t height, vk::Format format,
                                           vk::ImageTiling tiling, vk::ImageUsageFlags usage,
                                           vk::MemoryPropertyFlags properties) const {
-    auto textureImage_ = logicalDevice->createImageUnique(vk::ImageCreateInfo(
+    auto textureImage_ = device->createImageUnique(vk::ImageCreateInfo(
             {},
             vk::ImageType::e2D,
             format,
@@ -438,14 +438,14 @@ ImageWithMemory BaseGraphics::createImage(uint32_t width, uint32_t height, vk::F
             vk::ImageLayout::eUndefined
     ));
 
-    vk::MemoryRequirements memRequirements = logicalDevice->getImageMemoryRequirements(*textureImage_);
+    vk::MemoryRequirements memRequirements = device->getImageMemoryRequirements(*textureImage_);
 
-    auto textureImageMemory = logicalDevice->allocateMemoryUnique(vk::MemoryAllocateInfo(
+    auto textureImageMemory = device->allocateMemoryUnique(vk::MemoryAllocateInfo(
             memRequirements.size,
             findMemoryType(memRequirements.memoryTypeBits, properties)
     ));
 
-    logicalDevice->bindImageMemory(*textureImage_, *textureImageMemory, 0);
+    device->bindImageMemory(*textureImage_, *textureImageMemory, 0);
 
     return {
             std::move(textureImageMemory),
@@ -505,7 +505,7 @@ void BaseGraphics::transitionImageLayout(vk::Image image, SwitchLayout switchLay
 }
 
 vk::UniqueImageView BaseGraphics::createImageView(vk::Image image, vk::Format format) const {
-    return logicalDevice->createImageViewUnique(vk::ImageViewCreateInfo(
+    return device->createImageViewUnique(vk::ImageViewCreateInfo(
             {},
             image,
             vk::ImageViewType::e2D,
@@ -527,7 +527,7 @@ vk::UniqueImageView BaseGraphics::createImageView(vk::Image image, vk::Format fo
 }
 
 vk::UniqueSampler BaseGraphics::createTextureSampler() const {
-    return logicalDevice->createSamplerUnique(vk::SamplerCreateInfo(
+    return device->createSamplerUnique(vk::SamplerCreateInfo(
             {},
             vk::Filter::eLinear,
             vk::Filter::eLinear,

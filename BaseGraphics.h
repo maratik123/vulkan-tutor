@@ -23,19 +23,18 @@ private:
     [[nodiscard]] PFN_vkGetInstanceProcAddr getVkGetInstanceProcAddr() const;
     [[nodiscard]] vk::PhysicalDevice pickPhysicalDevice() const;
     [[nodiscard]] vk::UniqueDevice createLogicalDevice() const;
-    [[nodiscard]] bool isDeviceSuitable(
-            const vk::PhysicalDevice &requestedDevice,
-            vk::PhysicalDeviceType desiredDeviceType) const;
-    [[nodiscard]] QueueFamilyIndices findQueueFamilies(const vk::PhysicalDevice &requestedDevice) const;
+    [[nodiscard]] bool isDeviceSuitable(vk::PhysicalDevice requestedDevice,
+                                        vk::PhysicalDeviceType desiredDeviceType) const;
+    [[nodiscard]] QueueFamilyIndices findQueueFamilies(vk::PhysicalDevice requestedDevice) const;
     [[nodiscard]] QueueFamilyIndices findQueueFamilies() const { return findQueueFamilies(physicalDevice); }
-    [[nodiscard]] SwapChainSupportDetails querySwapChainSupport(const vk::PhysicalDevice &requestedDevice) const;
+    [[nodiscard]] SwapChainSupportDetails querySwapChainSupport(vk::PhysicalDevice requestedDevice) const;
     [[nodiscard]] SwapChainSupportDetails querySwapChainSupport() const {
         return querySwapChainSupport(physicalDevice);
     }
     [[nodiscard]] vk::UniqueCommandPool createCommandPool(std::optional<uint32_t> queueFamily,
                                                           vk::CommandPoolCreateFlags commandPoolCreateFlags) const;
     [[nodiscard]] vk::UniqueFence createFence() const {
-        return logicalDevice->createFenceUnique(vk::FenceCreateInfo(vk::FenceCreateFlagBits::eSignaled));
+        return device->createFenceUnique(vk::FenceCreateInfo(vk::FenceCreateFlagBits::eSignaled));
     }
     void recreateSwapChain();
     static void framebufferResizeCallback(void* userPointer, int width, int height);
@@ -68,7 +67,7 @@ private:
     vk::UniqueSurfaceKHR surface;
     vk::PhysicalDevice physicalDevice;
     QueueFamilyIndices queueFamilyIndices;
-    vk::UniqueDevice logicalDevice;
+    vk::UniqueDevice device;
     vk::Queue graphicsQueue;
     vk::Queue presentQueue;
     vk::Queue transferQueue;

@@ -24,7 +24,6 @@ namespace {
 
 SizeDependentResources::SizeDependentResources(BaseGraphics &base)
         : base(base),
-          logicalDevice(*base.logicalDevice),
           framebufferResized(false),
           swapChain(createSwapChain()),
           swapChainImages(getSwapChainImages()),
@@ -45,7 +44,7 @@ SizeDependentResources::SizeDependentResources(BaseGraphics &base)
 }
 
 [[nodiscard]] std::vector<vk::Image> SizeDependentResources::getSwapChainImages() const {
-    return logicalDevice.getSwapchainImagesKHR(*swapChain.swapChain);
+    return device().getSwapchainImagesKHR(*swapChain.swapChain);
 }
 
 std::vector<vk::UniqueImageView> SizeDependentResources::createSwapChainImageViews() const {
@@ -160,7 +159,7 @@ vk::UniquePipeline SizeDependentResources::createGraphicsPipeline() const {
             &colorBlendAttachment,
             {0.0f, 0.0f, 0.0f, 0.0f}
     );
-    return logicalDevice.createGraphicsPipelineUnique({}, vk::GraphicsPipelineCreateInfo(
+    return device().createGraphicsPipelineUnique({}, vk::GraphicsPipelineCreateInfo(
             {},
             2,
             shaderStages.data(),
@@ -213,7 +212,7 @@ vk::UniqueRenderPass SizeDependentResources::createRenderPass() const {
             {},
             vk::AccessFlagBits::eColorAttachmentWrite
     );
-    return logicalDevice.createRenderPassUnique(vk::RenderPassCreateInfo(
+    return device().createRenderPassUnique(vk::RenderPassCreateInfo(
             {},
             1,
             &colorAttachment,
@@ -230,7 +229,7 @@ std::vector<vk::UniqueFramebuffer> SizeDependentResources::createFramebuffers() 
     result.reserve(swapChainImageViews.size());
 
     for (const auto &imageView : swapChainImageViews) {
-        result.emplace_back(logicalDevice.createFramebufferUnique(vk::FramebufferCreateInfo(
+        result.emplace_back(device().createFramebufferUnique(vk::FramebufferCreateInfo(
                 {},
                 *renderPass,
                 1,
@@ -245,7 +244,7 @@ std::vector<vk::UniqueFramebuffer> SizeDependentResources::createFramebuffers() 
 }
 
 std::vector<vk::UniqueCommandBuffer> SizeDependentResources::createCommandBuffers() const {
-    auto commandBuffers_ = logicalDevice.allocateCommandBuffersUnique(vk::CommandBufferAllocateInfo(
+    auto commandBuffers_ = device().allocateCommandBuffersUnique(vk::CommandBufferAllocateInfo(
             *base.commandPool,
             vk::CommandBufferLevel::ePrimary,
             swapChainFramebuffers.size()
@@ -287,22 +286,22 @@ std::vector<vk::UniqueCommandBuffer> SizeDependentResources::createCommandBuffer
 }
 
 AfterDrawAction SizeDependentResources::drawFrame() {
-    logicalDevice.waitForFences({*base.inFlightFences[base.currentFrame]}, VK_TRUE, UINT64_MAX);
+    device().waitForFences({*base.inFlightFences[base.currentFrame]}, VK_TRUE, UINT64_MAX);
     uint32_t imageIndex;
     try {
-        imageIndex = logicalDevice.acquireNextImageKHR(
+        imageIndex = device().acquireNextImageKHR(
                 *swapChain.swapChain, UINT64_MAX, *base.imageAvailableSemaphore[base.currentFrame], {});
     } catch (const vk::OutOfDateKHRError &e) {
         return AfterDrawAction::RecreateSwapChain;
     }
     if (imagesInFlight[imageIndex]) {
-        logicalDevice.waitForFences({*imagesInFlight[imageIndex]->get()}, VK_TRUE, UINT64_MAX);
+        device().waitForFences({*imagesInFlight[imageIndex]->get()}, VK_TRUE, UINT64_MAX);
     }
     imagesInFlight[imageIndex] = base.inFlightFences[base.currentFrame];
     std::array<vk::PipelineStageFlags, 1> waitStages{
             vk::PipelineStageFlagBits::eColorAttachmentOutput
     };
-    logicalDevice.resetFences({*base.inFlightFences[base.currentFrame]});
+    device().resetFences({*base.inFlightFences[base.currentFrame]});
     updateUniformBuffer(imageIndex);
     base.graphicsQueue.submit({vk::SubmitInfo(
             1,
@@ -410,7 +409,7 @@ vk::UniqueDescriptorPool SizeDependentResources::createDescriptorPool() const {
             vk::DescriptorPoolSize(vk::DescriptorType::eUniformBuffer, swapChainImages.size()),
             vk::DescriptorPoolSize(vk::DescriptorType::eCombinedImageSampler, swapChainImages.size())
     };
-    return logicalDevice.createDescriptorPoolUnique(vk::DescriptorPoolCreateInfo(
+    return device().createDescriptorPoolUnique(vk::DescriptorPoolCreateInfo(
             vk::DescriptorPoolCreateFlagBits::eFreeDescriptorSet,
             static_cast<uint32_t>(swapChainImages.size()),
             poolSizes.size(),
@@ -426,7 +425,7 @@ std::vector<vk::UniqueDescriptorSet> SizeDependentResources::createDescriptorSet
             layouts.data()
     );
 
-    std::vector<vk::UniqueDescriptorSet> descriptorSets_ = logicalDevice.allocateDescriptorSetsUnique(allocInfo);
+    std::vector<vk::UniqueDescriptorSet> descriptorSets_ = device().allocateDescriptorSetsUnique(allocInfo);
 
     for (size_t i = 0; i < swapChainImages.size(); ++i) {
         vk::DescriptorBufferInfo bufferInfo(
@@ -441,7 +440,7 @@ std::vector<vk::UniqueDescriptorSet> SizeDependentResources::createDescriptorSet
                 vk::ImageLayout::eShaderReadOnlyOptimal
         );
 
-        logicalDevice.updateDescriptorSets(
+        device().updateDescriptorSets(
                 {
                         vk::WriteDescriptorSet(
                                 *descriptorSets_[i],
@@ -493,7 +492,7 @@ SwapChain SizeDependentResources::createSwapChain() const {
     const bool exclusiveFamilyIndex = queryFamilyIndices.size() == 1;
 
     return {
-            logicalDevice.createSwapchainKHRUnique(vk::SwapchainCreateInfoKHR(
+            device().createSwapchainKHRUnique(vk::SwapchainCreateInfoKHR(
                     {},
                     *base.surface,
                     imageCount,
@@ -516,7 +515,7 @@ SwapChain SizeDependentResources::createSwapChain() const {
 }
 
 vk::UniqueShaderModule SizeDependentResources::createShaderModule(const std::vector<char> &code) const {
-    return logicalDevice.createShaderModuleUnique(vk::ShaderModuleCreateInfo(
+    return device().createShaderModuleUnique(vk::ShaderModuleCreateInfo(
             {},
             code.size(),
             reinterpret_cast<const uint32_t *>(code.data())
@@ -524,7 +523,7 @@ vk::UniqueShaderModule SizeDependentResources::createShaderModule(const std::vec
 }
 
 vk::UniquePipelineLayout SizeDependentResources::createPipelineLayout() const {
-    return logicalDevice.createPipelineLayoutUnique(vk::PipelineLayoutCreateInfo(
+    return device().createPipelineLayoutUnique(vk::PipelineLayoutCreateInfo(
             {},
             1,
             &*base.descriptorSetLayout,
@@ -543,4 +542,8 @@ vk::Extent2D SizeDependentResources::chooseSwapExtent(const vk::SurfaceCapabilit
                                  capabilities.minImageExtent.width, capabilities.maxImageExtent.width))
             .setHeight(std::clamp(actualExtent.height,
                                   capabilities.minImageExtent.height, capabilities.maxImageExtent.height));
+}
+
+vk::Device SizeDependentResources::device() const {
+    return *base.device;
 }

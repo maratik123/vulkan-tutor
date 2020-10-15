@@ -17,8 +17,8 @@ public:
     template<typename Dispatch = VULKAN_HPP_DEFAULT_DISPATCHER_TYPE>
     [[nodiscard]]
     typename vk::ResultValueType<vk::UniqueHandle<vk::SurfaceKHR, Dispatch>>::type
-    createSurfaceUnique(const vk::Instance &instance, vk::Optional<const vk::AllocationCallbacks> allocator = nullptr,
-                              Dispatch const &d = VULKAN_HPP_DEFAULT_DISPATCHER) const;
+    createSurfaceUnique(vk::Instance instance, vk::Optional<const vk::AllocationCallbacks> allocator = nullptr,
+                        Dispatch const &d = VULKAN_HPP_DEFAULT_DISPATCHER) const;
     [[nodiscard]] vk::Extent2D getFramebufferSize() const;
     static void waitEvents() {
         glfwWaitEvents();
@@ -37,7 +37,7 @@ private:
 
 template<typename Dispatch>
 VULKAN_HPP_INLINE typename vk::ResultValueType<vk::UniqueHandle<vk::SurfaceKHR, Dispatch>>::type
-GLFWWindow::createSurfaceUnique(const vk::Instance &instance, vk::Optional<const vk::AllocationCallbacks> allocator,
+GLFWWindow::createSurfaceUnique(const vk::Instance instance, vk::Optional<const vk::AllocationCallbacks> allocator,
                           Dispatch const &d) const {
     vk::SurfaceKHR surface;
     auto result = static_cast<vk::Result>(glfwCreateWindowSurface(
