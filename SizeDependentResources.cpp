@@ -333,9 +333,10 @@ AfterDrawAction SizeDependentResources::drawFrame() {
 }
 
 SizeDependentResources &SizeDependentResources::operator =(SizeDependentResources &&other) noexcept {
-    if (this == &other || &base != &other.base) {
+    if (this == &other) {
         return *this;
     }
+    assert(&base == &other.base);
     imagesInFlight.clear();
     commandBuffers.clear();
     descriptorSets.clear();
@@ -350,6 +351,7 @@ SizeDependentResources &SizeDependentResources::operator =(SizeDependentResource
 
     framebufferResized = other.framebufferResized;
     swapChain = std::move(other.swapChain);
+
     swapChainImages = std::move(other.swapChainImages);
     swapChainImageViews = std::move(other.swapChainImageViews);
     renderPass = std::move(other.renderPass);
