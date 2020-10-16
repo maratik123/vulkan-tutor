@@ -109,6 +109,8 @@ BaseGraphics::BaseGraphics()
           inFlightFences({createFence(),
                           createFence()}),
           depthFormat(findDepthFormat()),
+          vertShaderModule(createShaderModule(readFile("shaders/shader.vert.spv"))),
+          fragShaderModule(createShaderModule(readFile("shaders/shader.frag.spv"))),
           res(*this),
           currentFrame(0) {
     std::cout << print_time << "Initialized" << std::endl;
@@ -193,7 +195,7 @@ vk::PhysicalDevice BaseGraphics::pickPhysicalDevice() const {
     for (auto deviceType : suitableDeviceTypesInPriority) {
         const auto it = std::find_if(
                 devices.cbegin(), devices.cend(),
-                [this, deviceType](const auto &device_) { return isDeviceSuitable(device_, deviceType); }
+                [this, deviceType](auto device_) { return isDeviceSuitable(device_, deviceType); }
         );
         if (it != devices.cend()) {
             return *it;
@@ -362,7 +364,7 @@ void BaseGraphics::copyViaStagingBuffer(const void *src, size_t size, CopyComman
 
 void BaseGraphics::copyViaStagingBuffer(const void *src, size_t size, const BufferWithMemory &dst) const {
     copyViaStagingBuffer(src, size, [size, &dst](const auto &stagingBuffer) {
-        return [&stagingBuffer, &dst, size](const auto &c) {
+        return [&stagingBuffer, &dst, size](auto c) {
             c.copyBuffer(*stagingBuffer.buffer, *dst.buffer, {vk::BufferCopy(0, 0, size)});
         };
     });
@@ -464,16 +466,6 @@ void BaseGraphics::transitionImageLayout(vk::Image image, vk::Format format, Swi
     vk::AccessFlags dstAccessMask;
     vk::PipelineStageFlags srcStage;
     vk::PipelineStageFlags dstStage;
-    vk::ImageAspectFlags aspectMask;
-
-    if (switchLayout.newLayout == vk::ImageLayout::eDepthStencilAttachmentOptimal) {
-        aspectMask = vk::ImageAspectFlagBits::eDepth;
-        if (hasStencilComponent(format)) {
-            aspectMask |= vk::ImageAspectFlagBits::eStencil;
-        }
-    } else {
-        aspectMask = vk::ImageAspectFlagBits::eColor;
-    }
 
     if (switchLayout == SwitchLayout{
             vk::ImageLayout::eUndefined,
@@ -483,23 +475,33 @@ void BaseGraphics::transitionImageLayout(vk::Image image, vk::Format format, Swi
         srcStage = vk::PipelineStageFlagBits::eTopOfPipe;
         dstStage = vk::PipelineStageFlagBits::eTransfer;
     } else if (switchLayout == SwitchLayout{
+            vk::ImageLayout::eUndefined,
+            vk::ImageLayout::eDepthStencilAttachmentOptimal}) {
+        srcAccessMask = {};
+        dstAccessMask = vk::AccessFlagBits::eDepthStencilAttachmentRead
+                        | vk::AccessFlagBits::eDepthStencilAttachmentWrite;
+        srcStage = vk::PipelineStageFlagBits::eTopOfPipe;
+        dstStage = vk::PipelineStageFlagBits::eEarlyFragmentTests;
+    } else if (switchLayout == SwitchLayout{
             vk::ImageLayout::eTransferDstOptimal,
             vk::ImageLayout::eShaderReadOnlyOptimal}) {
         srcAccessMask = vk::AccessFlagBits::eTransferWrite;
         dstAccessMask = vk::AccessFlagBits::eShaderRead;
         srcStage = vk::PipelineStageFlagBits::eTransfer;
         dstStage = vk::PipelineStageFlagBits::eFragmentShader;
-    } else if (switchLayout == SwitchLayout{
-        vk::ImageLayout::eUndefined,
-        vk::ImageLayout::eDepthStencilAttachmentOptimal
-    }) {
-        srcAccessMask = {};
-        dstAccessMask = vk::AccessFlagBits::eDepthStencilAttachmentRead
-                        | vk::AccessFlagBits::eDepthStencilAttachmentWrite;
-        srcStage = vk::PipelineStageFlagBits::eTopOfPipe;
-        dstStage = vk::PipelineStageFlagBits::eEarlyFragmentTests;
     } else {
         throw std::invalid_argument("unsupported layout transition!");
+    }
+
+    vk::ImageAspectFlags aspectMask;
+
+    if (switchLayout.newLayout == vk::ImageLayout::eDepthStencilAttachmentOptimal) {
+        aspectMask = vk::ImageAspectFlagBits::eDepth;
+        if (hasStencilComponent(format)) {
+            aspectMask |= vk::ImageAspectFlagBits::eStencil;
+        }
+    } else {
+        aspectMask = vk::ImageAspectFlagBits::eColor;
     }
 
     vk::ImageMemoryBarrier barrier(
@@ -518,7 +520,7 @@ void BaseGraphics::transitionImageLayout(vk::Image image, vk::Format format, Swi
                     1
             )
     );
-    singleTimeCommand([&barrier, srcStage, dstStage](const vk::CommandBuffer &t) {
+    singleTimeCommand([&barrier, srcStage, dstStage](auto t) {
         t.pipelineBarrier(
                 srcStage, dstStage,
                 {},
@@ -601,4 +603,12 @@ vk::Format BaseGraphics::findSupportedFormat(vk::ArrayProxy<const vk::Format> ca
     }
 
     throw std::runtime_error("failed to find supported format!");
+}
+
+vk::UniqueShaderModule BaseGraphics::createShaderModule(const std::vector<char> &code) const {
+    return device->createShaderModuleUnique(vk::ShaderModuleCreateInfo(
+            {},
+            code.size(),
+            reinterpret_cast<const uint32_t *>(code.data())
+    ));
 }

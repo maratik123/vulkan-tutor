@@ -101,22 +101,16 @@ std::vector<vk::UniqueImageView> SizeDependentResources::createSwapChainImageVie
 }
 
 vk::UniquePipeline SizeDependentResources::createGraphicsPipeline() const {
-    const auto vertShaderCode = readFile("shaders/shader.vert.spv");
-    const auto fragShaderCode = readFile("shaders/shader.frag.spv");
-
-    vk::UniqueShaderModule vertShaderModule = createShaderModule(vertShaderCode);
-    vk::UniqueShaderModule fragShaderModule = createShaderModule(fragShaderCode);
-
     vk::PipelineShaderStageCreateInfo vertShaderStageCreateInfo(
             {},
             vk::ShaderStageFlagBits::eVertex,
-            *vertShaderModule,
+            *base.vertShaderModule,
             "main"
     );
     vk::PipelineShaderStageCreateInfo fragShaderStageCreateInfo(
             {},
             vk::ShaderStageFlagBits::eFragment,
-            *fragShaderModule,
+            *base.fragShaderModule,
             "main"
     );
     std::array<vk::PipelineShaderStageCreateInfo, 2> shaderStages {
@@ -559,14 +553,6 @@ SwapChain SizeDependentResources::createSwapChain() const {
             surfaceFormat.format,
             extent
     };
-}
-
-vk::UniqueShaderModule SizeDependentResources::createShaderModule(const std::vector<char> &code) const {
-    return device().createShaderModuleUnique(vk::ShaderModuleCreateInfo(
-            {},
-            code.size(),
-            reinterpret_cast<const uint32_t *>(code.data())
-    ));
 }
 
 vk::UniquePipelineLayout SizeDependentResources::createPipelineLayout() const {

@@ -64,6 +64,7 @@ private:
         return findSupportedFormat({vk::Format::eD32Sfloat, vk::Format::eD32SfloatS8Uint, vk::Format::eD24UnormS8Uint},
                                    vk::ImageTiling::eOptimal, vk::FormatFeatureFlagBits::eDepthStencilAttachment);
     }
+    [[nodiscard]] vk::UniqueShaderModule createShaderModule(const std::vector<char> &code) const;
 
     std::chrono::high_resolution_clock::time_point startTime;
     GLFWWindow window;
@@ -91,6 +92,8 @@ private:
     std::array<vk::UniqueSemaphore, maxFramesInFlight> renderFinishedSemaphore;
     std::array<vk::UniqueFence, maxFramesInFlight> inFlightFences;
     vk::Format depthFormat;
+    vk::UniqueShaderModule vertShaderModule;
+    vk::UniqueShaderModule fragShaderModule;
     SizeDependentResources res;
     size_t currentFrame;
 

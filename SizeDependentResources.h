@@ -35,7 +35,6 @@ private:
     [[nodiscard]] vk::UniqueDescriptorPool createDescriptorPool() const;
     [[nodiscard]] std::vector<vk::UniqueDescriptorSet> createDescriptorSets() const;
     [[nodiscard]] SwapChain createSwapChain() const;
-    [[nodiscard]] vk::UniqueShaderModule createShaderModule(const std::vector<char> &code) const;
     [[nodiscard]] vk::UniquePipelineLayout createPipelineLayout() const;
     [[nodiscard]] vk::Extent2D chooseSwapExtent(const vk::SurfaceCapabilitiesKHR &capabilities) const;
     [[nodiscard]] vk::Device device() const;
