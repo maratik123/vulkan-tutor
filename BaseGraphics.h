@@ -73,7 +73,8 @@ private:
     void copyViaStagingBuffer(const void *src, size_t size, CopyCommandFactory copyCommandFactory) const;
     [[nodiscard]] vk::UniqueCommandBuffer createCommandBuffer(vk::CommandPool commandPool) const;
     [[nodiscard]] TextureImage createTextureImage() const;
-    [[nodiscard]] ImageWithMemory createImage(uint32_t width, uint32_t height, uint32_t mipLevels, vk::Format format,
+    [[nodiscard]] ImageWithMemory createImage(uint32_t width, uint32_t height, uint32_t mipLevels,
+                                              vk::SampleCountFlagBits numSamples, vk::Format format,
                                               vk::ImageTiling tiling, vk::ImageUsageFlags usage,
                                               vk::MemoryPropertyFlags properties) const;
     void transitionImageLayout(vk::Image image, vk::Format format, SwitchLayout switchLayout, uint32_t mipLevels) const;
@@ -90,6 +91,7 @@ private:
     }
     [[nodiscard]] vk::UniqueShaderModule createShaderModule(const std::vector<char> &code) const;
     [[nodiscard]] ModelBuffers createModelBuffers() const;
+    [[nodiscard]] vk::SampleCountFlagBits getMaxUsableSampleCount() const;
 
     std::chrono::high_resolution_clock::time_point startTime;
     GLFWWindow window;
@@ -99,6 +101,7 @@ private:
     debug::DynamicUniqueDebugUtilsMessengerEXT debugMessenger;
     vk::UniqueSurfaceKHR surface;
     vk::PhysicalDevice physicalDevice;
+    vk::SampleCountFlagBits msaaSamples;
     QueueFamilyIndices queueFamilyIndices;
     vk::UniqueDevice device;
     vk::Queue graphicsQueue;

@@ -86,6 +86,7 @@ BaseGraphics::BaseGraphics()
           debugMessenger(debug::setupDebugMessenger(*instance, dldi)),
           surface(window.createSurfaceUnique(*instance)),
           physicalDevice(pickPhysicalDevice()),
+          msaaSamples(getMaxUsableSampleCount()),
           queueFamilyIndices(findQueueFamilies()),
           device(createLogicalDevice()),
           graphicsQueue(device->getQueue(*queueFamilyIndices.graphicsFamily, 0)),
@@ -390,6 +391,7 @@ TextureImage BaseGraphics::createTextureImage() const {
             image.texWidth,
             image.texHeight,
             mipLevels,
+            vk::SampleCountFlagBits::e1,
             vk::Format::eR8G8B8A8Srgb,
             vk::ImageTiling::eOptimal,
             vk::ImageUsageFlagBits::eTransferSrc
@@ -433,7 +435,8 @@ TextureImage BaseGraphics::createTextureImage() const {
     };
 }
 
-ImageWithMemory BaseGraphics::createImage(uint32_t width, uint32_t height, uint32_t mipLevels, vk::Format format,
+ImageWithMemory BaseGraphics::createImage(uint32_t width, uint32_t height, uint32_t mipLevels,
+                                          vk::SampleCountFlagBits numSamples, vk::Format format,
                                           vk::ImageTiling tiling, vk::ImageUsageFlags usage,
                                           vk::MemoryPropertyFlags properties) const {
     auto textureImage_ = device->createImageUnique(vk::ImageCreateInfo(
@@ -443,7 +446,7 @@ ImageWithMemory BaseGraphics::createImage(uint32_t width, uint32_t height, uint3
             vk::Extent3D(width, height, 1),
             mipLevels,
             1,
-            vk::SampleCountFlagBits::e1,
+            numSamples,
             tiling,
             usage,
             vk::SharingMode::eExclusive,
@@ -739,4 +742,31 @@ void BaseGraphics::generateMipmaps(vk::Image image, vk::Format imageFormat, uint
                                   {barrier}
                           );
                       }, []{});
+}
+
+vk::SampleCountFlagBits BaseGraphics::getMaxUsableSampleCount() const {
+    auto physicalDeviceProperties = physicalDevice.getProperties();
+
+    vk::SampleCountFlags counts = physicalDeviceProperties.limits.framebufferColorSampleCounts
+            & physicalDeviceProperties.limits.framebufferDepthSampleCounts;
+
+    if (counts & vk::SampleCountFlagBits::e64) {
+        return vk::SampleCountFlagBits::e64;
+    }
+    if (counts & vk::SampleCountFlagBits::e32) {
+        return vk::SampleCountFlagBits::e32;
+    }
+    if (counts & vk::SampleCountFlagBits::e16) {
+        return vk::SampleCountFlagBits::e16;
+    }
+    if (counts & vk::SampleCountFlagBits::e8) {
+        return vk::SampleCountFlagBits::e8;
+    }
+    if (counts & vk::SampleCountFlagBits::e4) {
+        return vk::SampleCountFlagBits::e4;
+    }
+    if (counts & vk::SampleCountFlagBits::e2) {
+        return vk::SampleCountFlagBits::e2;
+    }
+    return vk::SampleCountFlagBits::e1;
 }

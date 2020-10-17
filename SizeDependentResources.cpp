@@ -28,6 +28,8 @@ SizeDependentResources::SizeDependentResources(BaseGraphics &base)
         : base(base),
           framebufferResized(false),
           swapChain(createSwapChain()),
+          colorImage(createColorImage()),
+          colorImageView(createColorImageView()),
           depthImage(createDepthImage()),
           depthImageView(createDepthImageView()),
           swapChainImages(getSwapChainImages()),
@@ -62,10 +64,14 @@ SizeDependentResources &SizeDependentResources::operator =(SizeDependentResource
     swapChainImages.clear();
     depthImageView.reset();
     depthImage = {};
+    colorImageView.reset();
+    colorImage = {};
 
     framebufferResized = other.framebufferResized;
     swapChain = std::move(other.swapChain);
 
+    colorImage = std::move(other.colorImage);
+    colorImageView = std::move(other.colorImageView);
     depthImage = std::move(other.depthImage);
     depthImageView = std::move(other.depthImageView);
     swapChainImages = std::move(other.swapChainImages);
@@ -169,7 +175,7 @@ vk::UniquePipeline SizeDependentResources::createGraphicsPipeline() const {
     );
     vk::PipelineMultisampleStateCreateInfo multisampling(
             {},
-            vk::SampleCountFlagBits::e1,
+            base.msaaSamples,
             VK_FALSE,
             1.0f,
             nullptr,
@@ -231,30 +237,40 @@ vk::UniquePipeline SizeDependentResources::createGraphicsPipeline() const {
 }
 
 vk::UniqueRenderPass SizeDependentResources::createRenderPass() const {
-    vk::AttachmentDescription colorAttachment(
-            {},
-            swapChain.imageFormat,
-            vk::SampleCountFlagBits::e1,
-            vk::AttachmentLoadOp::eClear,
-            vk::AttachmentStoreOp::eStore,
-            vk::AttachmentLoadOp::eDontCare,
-            vk::AttachmentStoreOp::eDontCare,
-            vk::ImageLayout::eUndefined,
-            vk::ImageLayout::ePresentSrcKHR
-    );
-    vk::AttachmentDescription depthAttachment(
-            {},
-            base.depthFormat,
-            vk::SampleCountFlagBits::e1,
-            vk::AttachmentLoadOp::eClear,
-            vk::AttachmentStoreOp::eDontCare,
-            vk::AttachmentLoadOp::eDontCare,
-            vk::AttachmentStoreOp::eDontCare,
-            vk::ImageLayout::eUndefined,
-            vk::ImageLayout::eDepthStencilAttachmentOptimal
-    );
-    std::array<vk::AttachmentDescription, 2> attachments {
-            colorAttachment, depthAttachment
+    std::array<vk::AttachmentDescription, 3> attachments {
+            vk::AttachmentDescription(
+                    {},
+                    swapChain.imageFormat,
+                    base.msaaSamples,
+                    vk::AttachmentLoadOp::eClear,
+                    vk::AttachmentStoreOp::eStore,
+                    vk::AttachmentLoadOp::eDontCare,
+                    vk::AttachmentStoreOp::eDontCare,
+                    vk::ImageLayout::eUndefined,
+                    vk::ImageLayout::eColorAttachmentOptimal
+            ),
+            vk::AttachmentDescription(
+                    {},
+                    base.depthFormat,
+                    base.msaaSamples,
+                    vk::AttachmentLoadOp::eClear,
+                    vk::AttachmentStoreOp::eDontCare,
+                    vk::AttachmentLoadOp::eDontCare,
+                    vk::AttachmentStoreOp::eDontCare,
+                    vk::ImageLayout::eUndefined,
+                    vk::ImageLayout::eDepthStencilAttachmentOptimal
+            ),
+            vk::AttachmentDescription(
+                    {},
+                    swapChain.imageFormat,
+                    vk::SampleCountFlagBits::e1,
+                    vk::AttachmentLoadOp::eDontCare,
+                    vk::AttachmentStoreOp::eStore,
+                    vk::AttachmentLoadOp::eDontCare,
+                    vk::AttachmentStoreOp::eDontCare,
+                    vk::ImageLayout::eUndefined,
+                    vk::ImageLayout::ePresentSrcKHR
+            )
     };
     vk::AttachmentReference colorAttachmentReference(
             0,
@@ -264,6 +280,10 @@ vk::UniqueRenderPass SizeDependentResources::createRenderPass() const {
             1,
             vk::ImageLayout::eDepthStencilAttachmentOptimal
     );
+    vk::AttachmentReference colorAttachmentResolveRef(
+            2,
+            vk::ImageLayout::eColorAttachmentOptimal
+    );
     vk::SubpassDescription subpass(
             {},
             vk::PipelineBindPoint::eGraphics,
@@ -271,7 +291,7 @@ vk::UniqueRenderPass SizeDependentResources::createRenderPass() const {
             nullptr,
             1,
             &colorAttachmentReference,
-            nullptr,
+            &colorAttachmentResolveRef,
             &depthAttachmentReference,
             0,
             nullptr
@@ -302,8 +322,8 @@ std::vector<vk::UniqueFramebuffer> SizeDependentResources::createFramebuffers() 
     result.reserve(swapChainImageViews.size());
 
     for (const auto &imageView : swapChainImageViews) {
-        std::array<vk::ImageView, 2> attachments {
-            *imageView, *depthImageView
+        std::array<vk::ImageView, 3> attachments {
+            *colorImageView, *depthImageView, *imageView
         };
         result.emplace_back(device().createFramebufferUnique(vk::FramebufferCreateInfo(
                 {},
@@ -584,9 +604,11 @@ vk::Device SizeDependentResources::device() const {
 }
 
 ImageWithMemory SizeDependentResources::createDepthImage() const {
-    auto depthImage_ = base.createImage(swapChain.extent.width, swapChain.extent.height, 1, base.depthFormat,
-                            vk::ImageTiling::eOptimal, vk::ImageUsageFlagBits::eDepthStencilAttachment,
-                            vk::MemoryPropertyFlagBits::eDeviceLocal);
+    auto depthImage_ = base.createImage(
+            swapChain.extent.width, swapChain.extent.height, 1, base.msaaSamples,
+            base.depthFormat,vk::ImageTiling::eOptimal, vk::ImageUsageFlagBits::eDepthStencilAttachment,
+            vk::MemoryPropertyFlagBits::eDeviceLocal
+    );
 
     base.transitionImageLayout(*depthImage_.image, base.depthFormat, SwitchLayout {
             vk::ImageLayout::eUndefined, vk::ImageLayout::eDepthStencilAttachmentOptimal
@@ -597,4 +619,17 @@ ImageWithMemory SizeDependentResources::createDepthImage() const {
 
 vk::UniqueImageView SizeDependentResources::createDepthImageView() const {
     return base.createImageView(*depthImage.image, base.depthFormat, vk::ImageAspectFlagBits::eDepth, 1);
+}
+
+ImageWithMemory SizeDependentResources::createColorImage() const {
+    return base.createImage(
+            swapChain.extent.width, swapChain.extent.height, 1, base.msaaSamples, swapChain.imageFormat,
+            vk::ImageTiling::eOptimal,
+            vk::ImageUsageFlagBits::eTransientAttachment | vk::ImageUsageFlagBits::eColorAttachment,
+            vk::MemoryPropertyFlagBits::eDeviceLocal
+    );
+}
+
+vk::UniqueImageView SizeDependentResources::createColorImageView() const {
+    return base.createImageView(*colorImage.image, swapChain.imageFormat, vk::ImageAspectFlagBits::eColor, 1);
 }

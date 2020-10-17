@@ -72,8 +72,12 @@ private:
     [[nodiscard]] vk::Device device() const;
     [[nodiscard]] ImageWithMemory createDepthImage() const;
     [[nodiscard]] vk::UniqueImageView createDepthImageView() const;
+    [[nodiscard]] ImageWithMemory createColorImage() const;
+    [[nodiscard]] vk::UniqueImageView  createColorImageView() const;
 
     SwapChain swapChain;
+    ImageWithMemory colorImage;
+    vk::UniqueImageView colorImageView;
     ImageWithMemory depthImage;
     vk::UniqueImageView depthImageView;
     std::vector<vk::Image> swapChainImages;
