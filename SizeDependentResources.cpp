@@ -176,8 +176,8 @@ vk::UniquePipeline SizeDependentResources::createGraphicsPipeline() const {
     vk::PipelineMultisampleStateCreateInfo multisampling(
             {},
             base.msaaSamples,
-            VK_FALSE,
-            1.0f,
+            VK_TRUE,
+            0.2f,
             nullptr,
             VK_FALSE,
             VK_FALSE

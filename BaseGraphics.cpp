@@ -229,6 +229,7 @@ vk::UniqueDevice BaseGraphics::createLogicalDevice() const {
 
     vk::PhysicalDeviceFeatures deviceFeatures {};
     deviceFeatures.samplerAnisotropy = VK_TRUE;
+    deviceFeatures.sampleRateShading = VK_TRUE;
 
     return physicalDevice.createDeviceUnique(vk::DeviceCreateInfo(
             {},
