@@ -3,7 +3,31 @@
 
 #include <vector>
 
-#include "Common.h"
+#include "GLFWInclude.h"
+
+struct BufferWithMemory {
+    vk::UniqueDeviceMemory bufferMemory{};
+    vk::UniqueBuffer buffer{};
+};
+
+struct ImageWithMemory {
+    vk::UniqueDeviceMemory imageMemory{};
+    vk::UniqueImage image{};
+};
+
+struct TextureImage {
+    ImageWithMemory image;
+    uint32_t mipLevels;
+};
+
+struct SwitchLayout {
+    vk::ImageLayout oldLayout{};
+    vk::ImageLayout newLayout{};
+
+    bool operator ==(const SwitchLayout &other) const {
+        return oldLayout == other.oldLayout && newLayout == other.newLayout;
+    };
+};
 
 using OptRefUniqueFence = std::optional<std::reference_wrapper<vk::UniqueFence>>;
 
@@ -61,7 +85,7 @@ private:
     std::vector<BufferWithMemory> uniformBuffers;
     vk::UniqueDescriptorPool descriptorPool;
     std::vector<vk::UniqueDescriptorSet> descriptorSets;
-    std::vector<vk::UniqueCommandBuffer> commandBuffers;
+    std::vector<vk::UniqueCommandBuffer> graphicsCommandBuffers;
     std::vector<OptRefUniqueFence> imagesInFlight;
 };
 

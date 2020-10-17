@@ -2,6 +2,8 @@
 
 #include <unordered_set>
 
+#include "GLFWInclude.h"
+
 #include "BaseGraphics.h"
 #include "ShaderObjects.h"
 
@@ -37,7 +39,7 @@ SizeDependentResources::SizeDependentResources(BaseGraphics &base)
           uniformBuffers(createUniformBuffers()),
           descriptorPool(createDescriptorPool()),
           descriptorSets(createDescriptorSets()),
-          commandBuffers(createCommandBuffers()),
+          graphicsCommandBuffers(createCommandBuffers()),
           imagesInFlight(createImageFenceReferences()) {
 }
 
@@ -48,7 +50,7 @@ SizeDependentResources &SizeDependentResources::operator =(SizeDependentResource
     assert(&base == &other.base);
 
     imagesInFlight.clear();
-    commandBuffers.clear();
+    graphicsCommandBuffers.clear();
     descriptorSets.clear();
     descriptorPool.reset();
     uniformBuffers.clear();
@@ -75,7 +77,7 @@ SizeDependentResources &SizeDependentResources::operator =(SizeDependentResource
     uniformBuffers = std::move(other.uniformBuffers);
     descriptorPool = std::move(other.descriptorPool);
     descriptorSets = std::move(other.descriptorSets);
-    commandBuffers = std::move(other.commandBuffers);
+    graphicsCommandBuffers = std::move(other.graphicsCommandBuffers);
     imagesInFlight = std::move(other.imagesInFlight);
 
     return *this;
@@ -94,7 +96,7 @@ std::vector<vk::UniqueImageView> SizeDependentResources::createSwapChainImageVie
     result.reserve(swapChainImages.size());
 
     for (const auto image : swapChainImages) {
-        result.emplace_back(base.createImageView(image, swapChain.imageFormat, vk::ImageAspectFlagBits::eColor));
+        result.emplace_back(base.createImageView(image, swapChain.imageFormat, vk::ImageAspectFlagBits::eColor, 1));
     }
 
     return result;
@@ -319,7 +321,7 @@ std::vector<vk::UniqueFramebuffer> SizeDependentResources::createFramebuffers() 
 
 std::vector<vk::UniqueCommandBuffer> SizeDependentResources::createCommandBuffers() const {
     auto commandBuffers_ = device().allocateCommandBuffersUnique(vk::CommandBufferAllocateInfo(
-            *base.commandPool,
+            *base.graphicsCommandPool,
             vk::CommandBufferLevel::ePrimary,
             swapChainFramebuffers.size()
     ));
@@ -385,7 +387,7 @@ AfterDrawAction SizeDependentResources::drawFrame() {
             &*base.imageAvailableSemaphore[base.currentFrame],
             waitStages.data(),
             1,
-            &*commandBuffers[imageIndex],
+            &*graphicsCommandBuffers[imageIndex],
             1,
             &*base.renderFinishedSemaphore[base.currentFrame]
     )}, *base.inFlightFences[base.currentFrame]);
@@ -582,17 +584,17 @@ vk::Device SizeDependentResources::device() const {
 }
 
 ImageWithMemory SizeDependentResources::createDepthImage() const {
-    auto depthImage_ = base.createImage(swapChain.extent.width, swapChain.extent.height, base.depthFormat,
+    auto depthImage_ = base.createImage(swapChain.extent.width, swapChain.extent.height, 1, base.depthFormat,
                             vk::ImageTiling::eOptimal, vk::ImageUsageFlagBits::eDepthStencilAttachment,
                             vk::MemoryPropertyFlagBits::eDeviceLocal);
 
     base.transitionImageLayout(*depthImage_.image, base.depthFormat, SwitchLayout {
             vk::ImageLayout::eUndefined, vk::ImageLayout::eDepthStencilAttachmentOptimal
-    });
+    }, 1);
 
     return depthImage_;
 }
 
 vk::UniqueImageView SizeDependentResources::createDepthImageView() const {
-    return base.createImageView(*depthImage.image, base.depthFormat, vk::ImageAspectFlagBits::eDepth);
+    return base.createImageView(*depthImage.image, base.depthFormat, vk::ImageAspectFlagBits::eDepth, 1);
 }

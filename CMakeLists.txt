@@ -68,7 +68,6 @@ add_executable(vulkan_tutor
         GLFWInclude.h
         GLMInclude.h
         STBInclude.h
-        Common.h
         TOLInclude.h)
 
 add_shader(vulkan_tutor shader.vert)

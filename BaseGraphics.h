@@ -6,7 +6,6 @@
 
 #include "GLFWInclude.h"
 
-#include "Common.h"
 #include "GLFWWindow.h"
 #include "Debug.h"
 #include "SizeDependentResources.h"
@@ -67,19 +66,21 @@ private:
     [[nodiscard]] BufferWithMemory createVertexBuffer(const Model &model) const;
     [[nodiscard]] BufferWithMemory createIndexBuffer(const Model &model) const;
     template<typename CopyCommand, typename FlushBuffer>
-    void singleTimeCommand(CopyCommand copyCommand, FlushBuffer flushBuffer) const;
+    void singleTimeCommand(vk::CommandPool commandPool, CopyCommand copyCommand, FlushBuffer flushBuffer) const;
     [[nodiscard]] vk::UniqueDescriptorSetLayout createDescriptorSetLayout() const;
     void copyViaStagingBuffer(const void *src, size_t size, const BufferWithMemory &dst) const;
     template<typename CopyCommandFactory>
     void copyViaStagingBuffer(const void *src, size_t size, CopyCommandFactory copyCommandFactory) const;
-    [[nodiscard]] vk::UniqueCommandBuffer createTransferCommandBuffer() const;
-    [[nodiscard]] ImageWithMemory createTextureImage() const;
-    [[nodiscard]] ImageWithMemory createImage(uint32_t width, uint32_t height, vk::Format format,
+    [[nodiscard]] vk::UniqueCommandBuffer createCommandBuffer(vk::CommandPool commandPool) const;
+    [[nodiscard]] TextureImage createTextureImage() const;
+    [[nodiscard]] ImageWithMemory createImage(uint32_t width, uint32_t height, uint32_t mipLevels, vk::Format format,
                                               vk::ImageTiling tiling, vk::ImageUsageFlags usage,
                                               vk::MemoryPropertyFlags properties) const;
-    void transitionImageLayout(vk::Image image, vk::Format format, SwitchLayout switchLayout) const;
+    void transitionImageLayout(vk::Image image, vk::Format format, SwitchLayout switchLayout, uint32_t mipLevels) const;
+    void generateMipmaps(vk::Image image, vk::Format imageFormat, uint32_t texWidth, uint32_t texHeight,
+                         uint32_t mipLevels) const;
     [[nodiscard]] vk::UniqueImageView createImageView(vk::Image image, vk::Format format,
-                                                      vk::ImageAspectFlags aspectFlags) const;
+                                                      vk::ImageAspectFlags aspectFlags, uint32_t mipLevels) const;
     [[nodiscard]] vk::UniqueSampler createTextureSampler() const;
     [[nodiscard]] vk::Format findSupportedFormat(vk::ArrayProxy<const vk::Format> candidates, vk::ImageTiling tiling,
                                                  vk::FormatFeatureFlags features) const;
@@ -104,11 +105,10 @@ private:
     vk::Queue presentQueue;
     vk::Queue transferQueue;
     vk::UniqueDescriptorSetLayout descriptorSetLayout;
-    vk::UniqueCommandPool commandPool;
+    vk::UniqueCommandPool graphicsCommandPool;
     vk::UniqueCommandPool transferCommandPool;
-    vk::UniqueCommandBuffer transferCommandBuffer;
     ModelBuffers modelBuffers;
-    ImageWithMemory textureImage;
+    TextureImage textureImage;
     vk::UniqueImageView textureImageView;
     vk::UniqueSampler textureSampler;
     std::array<vk::UniqueSemaphore, maxFramesInFlight> imageAvailableSemaphore;
