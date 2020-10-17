@@ -10,6 +10,29 @@
 #include "GLFWWindow.h"
 #include "Debug.h"
 #include "SizeDependentResources.h"
+#include "Model.h"
+
+struct QueueFamilyIndices {
+    std::optional<uint32_t> graphicsFamily{};
+    std::optional<uint32_t> presentFamily{};
+    std::optional<uint32_t> transferFamily{};
+
+    [[nodiscard]] constexpr bool isComplete() const {
+        return graphicsFamily.has_value() && presentFamily.has_value() && transferFamily.has_value();
+    }
+};
+
+struct SwapChainSupportDetails {
+    vk::SurfaceCapabilitiesKHR capabilities{};
+    std::vector<vk::SurfaceFormatKHR> formats{};
+    std::vector<vk::PresentModeKHR> presentModes{};
+};
+
+struct ModelBuffers {
+    BufferWithMemory vertexBuffer{};
+    BufferWithMemory indexBuffer{};
+    size_t indicesCount{};
+};
 
 class BaseGraphics {
 public:
@@ -41,8 +64,8 @@ private:
     [[nodiscard]] BufferWithMemory createBuffer(vk::DeviceSize size, vk::BufferUsageFlags usage,
                                                 vk::MemoryPropertyFlags properties) const;
     [[nodiscard]] uint32_t findMemoryType(uint32_t typeFilter, vk::MemoryPropertyFlags properties) const;
-    [[nodiscard]] BufferWithMemory createVertexBuffer() const;
-    [[nodiscard]] BufferWithMemory createIndexBuffer() const;
+    [[nodiscard]] BufferWithMemory createVertexBuffer(const Model &model) const;
+    [[nodiscard]] BufferWithMemory createIndexBuffer(const Model &model) const;
     template<typename CopyCommand, typename FlushBuffer>
     void singleTimeCommand(CopyCommand copyCommand, FlushBuffer flushBuffer) const;
     [[nodiscard]] vk::UniqueDescriptorSetLayout createDescriptorSetLayout() const;
@@ -65,6 +88,7 @@ private:
                                    vk::ImageTiling::eOptimal, vk::FormatFeatureFlagBits::eDepthStencilAttachment);
     }
     [[nodiscard]] vk::UniqueShaderModule createShaderModule(const std::vector<char> &code) const;
+    [[nodiscard]] ModelBuffers createModelBuffers() const;
 
     std::chrono::high_resolution_clock::time_point startTime;
     GLFWWindow window;
@@ -83,8 +107,7 @@ private:
     vk::UniqueCommandPool commandPool;
     vk::UniqueCommandPool transferCommandPool;
     vk::UniqueCommandBuffer transferCommandBuffer;
-    BufferWithMemory vertexBuffer;
-    BufferWithMemory indexBuffer;
+    ModelBuffers modelBuffers;
     ImageWithMemory textureImage;
     vk::UniqueImageView textureImageView;
     vk::UniqueSampler textureSampler;

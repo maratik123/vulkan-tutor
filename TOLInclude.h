@@ -1,0 +1,7 @@
+#ifndef VULKAN_TUTOR_TOLINCLUDE_H
+#define VULKAN_TUTOR_TOLINCLUDE_H
+
+#define TINYOBJLOADER_IMPLEMENTATION
+#include "tiny_obj_loader.h"
+
+#endif //VULKAN_TUTOR_TOLINCLUDE_H

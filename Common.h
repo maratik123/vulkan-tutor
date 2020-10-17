@@ -5,30 +5,6 @@
 
 #include "GLFWInclude.h"
 
-using OptRefUniqueFence = std::optional<std::reference_wrapper<vk::UniqueFence>>;
-
-struct QueueFamilyIndices {
-    std::optional<uint32_t> graphicsFamily{};
-    std::optional<uint32_t> presentFamily{};
-    std::optional<uint32_t> transferFamily{};
-
-    [[nodiscard]] constexpr bool isComplete() const {
-        return graphicsFamily.has_value() && presentFamily.has_value() && transferFamily.has_value();
-    }
-};
-
-struct SwapChainSupportDetails {
-    vk::SurfaceCapabilitiesKHR capabilities{};
-    std::vector<vk::SurfaceFormatKHR> formats{};
-    std::vector<vk::PresentModeKHR> presentModes{};
-};
-
-struct SwapChain {
-    vk::UniqueSwapchainKHR swapChain{};
-    vk::Format imageFormat{};
-    vk::Extent2D extent{};
-};
-
 struct BufferWithMemory {
     vk::UniqueDeviceMemory bufferMemory{};
     vk::UniqueBuffer buffer{};

@@ -13,6 +13,12 @@ namespace so {
         glm::vec3 color{};
         glm::vec2 texCoord{};
 
+        constexpr bool operator ==(const Vertex &other) const {
+            return pos == other.pos
+                   && color == other.color
+                   && texCoord == other.texCoord;
+        }
+
         static constexpr vk::VertexInputBindingDescription bindingDescription() {
             return {
                     0,
@@ -65,26 +71,27 @@ namespace so {
             vk::ShaderStageFlagBits::eFragment
     );
 
-    constexpr std::array<vk::DescriptorSetLayoutBinding, 2> layoutBindings = {
+    constexpr std::array<vk::DescriptorSetLayoutBinding, 2> layoutBindings {
             UnifiedBufferObject::uboLayoutBinding, samplerLayoutBinding
     };
+}
 
-    constexpr std::array<Vertex, 8> vertices{{
-                                                     {{-0.5f, -0.5f, 0.0f}, {1.0f, 0.0f, 0.0f}, {0.0f, 0.0f}},
-                                                     {{0.5f, -0.5f, 0.0f}, {0.0f, 1.0f, 0.0f}, {1.0f, 0.0f}},
-                                                     {{0.5f, 0.5f, 0.0f}, {0.0f, 0.0f, 1.0f}, {1.0f, 1.0f}},
-                                                     {{-0.5f, 0.5f, 0.0f}, {1.0f, 1.0f, 1.0f}, {0.0f, 1.0f}},
-                                                     {{-0.5f, -0.5f, -0.5f}, {1.0f, 0.0f, 0.0f}, {0.0f, 0.0f}},
-                                                     {{0.5f, -0.5f, -0.5f}, {0.0f, 1.0f, 0.0f}, {1.0f, 0.0f}},
-                                                     {{0.5f, 0.5f, -0.5f}, {0.0f, 0.0f, 1.0f}, {1.0f, 1.0f}},
-                                                     {{-0.5f, 0.5f, -0.5f}, {1.0f, 1.0f, 1.0f}, {0.0f, 1.0f}}
-                                             }};
-    constexpr std::array<uint16_t, 12> indices{{
-                                                      0, 1, 2, 2, 3, 0,
-                                                       4, 5, 6, 6, 7, 4,
-                                              }};
+namespace std {
+    template<>
+    struct hash<so::Vertex> {
+        size_t operator()(const so::Vertex &vertex) const {
+            size_t seed = 0;
+            seed = hash_combine(seed, hash<decltype(vertex.pos)>()(vertex.pos));
+            seed = hash_combine(seed, hash<decltype(vertex.color)>()(vertex.color));
+            seed = hash_combine(seed, hash<decltype(vertex.texCoord)>()(vertex.texCoord));
+            return seed;
+        }
 
-    constexpr size_t verticesSize = sizeof(decltype(vertices)::value_type) * vertices.size();
-    constexpr size_t indicesSize = sizeof(decltype(indices)::value_type) * indices.size();
+    private:
+        static constexpr size_t hash_combine(size_t seed, size_t hash) {
+            hash += 0x9e3779b9 + (seed << 6u) + (seed >> 2u);
+            return seed ^ hash;
+        }
+    };
 }
 #endif //VULKAN_TUTOR_SHADEROBJECTS_H

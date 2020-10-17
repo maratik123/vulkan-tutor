@@ -81,7 +81,7 @@ BaseGraphics::BaseGraphics()
         : startTime(std::chrono::high_resolution_clock::now()),
           window(framebufferResizeCallback, &res),
           instance(createInstance()),
-          dl{},
+          dl(),
           dldi(*instance, getVkGetInstanceProcAddr()),
           debugMessenger(debug::setupDebugMessenger(*instance, dldi)),
           surface(window.createSurfaceUnique(*instance)),
@@ -96,8 +96,7 @@ BaseGraphics::BaseGraphics()
           transferCommandPool(createCommandPool(queueFamilyIndices.transferFamily,
                                                 vk::CommandPoolCreateFlagBits::eResetCommandBuffer)),
           transferCommandBuffer(createTransferCommandBuffer()),
-          vertexBuffer(createVertexBuffer()),
-          indexBuffer(createIndexBuffer()),
+          modelBuffers(createModelBuffers()),
           textureImage(createTextureImage()),
           textureImageView(createImageView(*textureImage.image, vk::Format::eR8G8B8A8Srgb,
                                            vk::ImageAspectFlagBits::eColor)),
@@ -306,21 +305,23 @@ BufferWithMemory BaseGraphics::createBuffer(vk::DeviceSize size, vk::BufferUsage
     };
 }
 
-BufferWithMemory BaseGraphics::createVertexBuffer() const {
+BufferWithMemory BaseGraphics::createVertexBuffer(const Model &model) const {
+    auto size = sizeof(decltype(model.vertices)::value_type) * model.vertices.size();
     auto result = createBuffer(
-            so::verticesSize, vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eVertexBuffer,
+            size, vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eVertexBuffer,
             vk::MemoryPropertyFlagBits::eDeviceLocal);
 
-    copyViaStagingBuffer(so::vertices.data(), so::verticesSize, result);
+    copyViaStagingBuffer(model.vertices.data(), size, result);
     return result;
 }
 
-BufferWithMemory BaseGraphics::createIndexBuffer() const {
+BufferWithMemory BaseGraphics::createIndexBuffer(const Model &model) const {
+    auto size = sizeof(decltype(model.indices)::value_type) * model.indices.size();
     auto result = createBuffer(
-            so::indicesSize, vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eIndexBuffer,
+            size, vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eIndexBuffer,
             vk::MemoryPropertyFlagBits::eDeviceLocal);
 
-    copyViaStagingBuffer(so::indices.data(), so::indicesSize, result);
+    copyViaStagingBuffer(model.indices.data(), size, result);
     return result;
 }
 
@@ -383,7 +384,7 @@ vk::UniqueCommandBuffer BaseGraphics::createTransferCommandBuffer() const {
 }
 
 ImageWithMemory BaseGraphics::createTextureImage() const {
-    Image image("textures/texture.jpg");
+    Image image("textures/viking_room.png");
 
     auto textureImage_ = createImage(
             image.texWidth,
@@ -611,4 +612,13 @@ vk::UniqueShaderModule BaseGraphics::createShaderModule(const std::vector<char> 
             code.size(),
             reinterpret_cast<const uint32_t *>(code.data())
     ));
+}
+
+ModelBuffers BaseGraphics::createModelBuffers() const {
+    Model model("models/viking_room.obj");
+    return ModelBuffers {
+            createVertexBuffer(model),
+            createIndexBuffer(model),
+            model.indices.size()
+    };
 }

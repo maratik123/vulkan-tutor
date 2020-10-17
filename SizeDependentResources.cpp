@@ -157,7 +157,7 @@ vk::UniquePipeline SizeDependentResources::createGraphicsPipeline() const {
             VK_FALSE,
             VK_FALSE,
             vk::PolygonMode::eFill,
-            vk::CullModeFlagBits::eBack,
+            vk::CullModeFlagBits::eFront,
             vk::FrontFace::eClockwise,
             VK_FALSE,
             0.0f,
@@ -350,11 +350,11 @@ std::vector<vk::UniqueCommandBuffer> SizeDependentResources::createCommandBuffer
                 clearValues.data()
         ), vk::SubpassContents::eInline);
         commandBuffer->bindPipeline(vk::PipelineBindPoint::eGraphics, *graphicsPipeline);
-        commandBuffer->bindVertexBuffers(0, {*base.vertexBuffer.buffer}, {0});
-        commandBuffer->bindIndexBuffer(*base.indexBuffer.buffer, 0, vk::IndexType::eUint16);
+        commandBuffer->bindVertexBuffers(0, {*base.modelBuffers.vertexBuffer.buffer}, {0});
+        commandBuffer->bindIndexBuffer(*base.modelBuffers.indexBuffer.buffer, 0, vk::IndexType::eUint32);
         commandBuffer->bindDescriptorSets(vk::PipelineBindPoint::eGraphics, *pipelineLayout, 0, {*descriptorSets[i]},
                                           {});
-        commandBuffer->drawIndexed(static_cast<uint32_t>(so::indices.size()), 1, 0, 0, 0);
+        commandBuffer->drawIndexed(static_cast<uint32_t>(base.modelBuffers.indicesCount), 1, 0, 0, 0);
         commandBuffer->endRenderPass();
         commandBuffer->end();
     }
@@ -434,7 +434,7 @@ void SizeDependentResources::updateUniformBuffer(uint32_t imageIndex) {
     so::UnifiedBufferObject ubo {
             glm::rotate(
                     glm::mat4(1.0f),
-                    duration.count() * glm::radians(90.0f),
+                    duration.count() * glm::radians(5.0f),
                     glm::vec3(0.0f, 0.0f, 1.0f)),
             glm::lookAt(
                     glm::vec3(2.0f, 2.0f, 2.0f),

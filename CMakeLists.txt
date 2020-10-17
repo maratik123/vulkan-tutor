@@ -30,38 +30,54 @@ function(add_shader TARGET SHADER)
     target_sources(${TARGET} PRIVATE ${current-output-path})
 endfunction(add_shader)
 
-function(add_texture TARGET TEXTURE)
-    set(current-texture-path ${CMAKE_CURRENT_SOURCE_DIR}/textures/${TEXTURE})
-    set(current-output-path ${CMAKE_BINARY_DIR}/textures/${TEXTURE})
+function(add_asset TARGET ASSET)
+    set(current-asset-path ${CMAKE_CURRENT_SOURCE_DIR}/${ASSET})
+    set(current-output-path ${CMAKE_BINARY_DIR}/${ASSET})
     get_filename_component(current-output-dir ${current-output-path} DIRECTORY)
     file(MAKE_DIRECTORY ${current-output-dir})
     add_custom_command(
             OUTPUT ${current-output-path}
-            COMMAND ${CMAKE_COMMAND} -E copy ${current-texture-path} ${current-output-path}
-            DEPENDS ${current-texture-path}
-            IMPLICIT_DEPENDS CXX ${current-texture-path})
-    set_source_files_properties(${current-output-path} PROPERTIES GENERATED TRUE)
+            COMMAND ${CMAKE_COMMAND} -E copy ${current-asset-path} ${current-output-path}
+            DEPENDS ${current-asset-path}
+            IMPLICIT_DEPENDS CXX ${current-asset-path})
+    set_source_files_properties(${current-output-path} PROPERTIES
+            GENERATED TRUE
+            HEADER_FILE_ONLY TRUE)
     target_sources(${TARGET} PRIVATE ${current-output-path})
+endfunction(add_asset)
+
+function(add_texture TARGET TEXTURE)
+    add_asset(${TARGET} textures/${TEXTURE})
 endfunction(add_texture)
 
+function(add_model TARGET MODEL)
+    add_asset(${TARGET} models/${MODEL})
+endfunction(add_model)
+
 add_executable(vulkan_tutor
+        Model.cpp Model.h
         BaseGraphics.cpp BaseGraphics.h
         SizeDependentResources.cpp SizeDependentResources.h
+        Image.cpp Image.h
         Debug.cpp Debug.h
         Main.cpp
         GLFWWindow.cpp GLFWWindow.h
         GLFWResource.cpp GLFWResource.h
-        Image.cpp Image.h
         Utils.cpp Utils.h
         ShaderObjects.h
         GLFWInclude.h
         GLMInclude.h
         STBInclude.h
-        Common.h)
+        Common.h
+        TOLInclude.h)
 
 add_shader(vulkan_tutor shader.vert)
 add_shader(vulkan_tutor shader.frag)
+
 add_texture(vulkan_tutor texture.jpg)
+add_texture(vulkan_tutor viking_room.png)
+
+add_model(vulkan_tutor viking_room.obj)
 
 find_package(glfw3 REQUIRED)
 find_package(Vulkan REQUIRED)
@@ -72,7 +88,8 @@ pkg_check_modules(GLM REQUIRED glm)
 
 target_include_directories(vulkan_tutor SYSTEM PRIVATE
         ${GLM_INCLUDE_DIRS}
-        stb)
+        stb
+        tinyobjloader)
 target_link_libraries(vulkan_tutor
         glfw
         Vulkan::Vulkan

@@ -5,12 +5,20 @@
 
 #include "Common.h"
 
-class BaseGraphics;
+using OptRefUniqueFence = std::optional<std::reference_wrapper<vk::UniqueFence>>;
+
+struct SwapChain {
+    vk::UniqueSwapchainKHR swapChain{};
+    vk::Format imageFormat{};
+    vk::Extent2D extent{};
+};
 
 enum class AfterDrawAction {
     Noop,
     RecreateSwapChain
 };
+
+class BaseGraphics;
 
 class SizeDependentResources {
     BaseGraphics &base;
