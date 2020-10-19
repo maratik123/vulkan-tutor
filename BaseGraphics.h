@@ -66,7 +66,8 @@ private:
     [[nodiscard]] BufferWithMemory createVertexBuffer(const Model &model) const;
     [[nodiscard]] BufferWithMemory createIndexBuffer(const Model &model) const;
     template<typename CopyCommand, typename FlushBuffer>
-    void singleTimeCommand(vk::CommandPool commandPool, CopyCommand copyCommand, FlushBuffer flushBuffer) const;
+    void singleTimeCommand(vk::Queue queue, vk::CommandPool commandPool, CopyCommand copyCommand,
+                           FlushBuffer flushBuffer) const;
     [[nodiscard]] vk::UniqueDescriptorSetLayout createDescriptorSetLayout() const;
     void copyViaStagingBuffer(const void *src, size_t size, const BufferWithMemory &dst) const;
     template<typename CopyCommandFactory>
@@ -77,7 +78,8 @@ private:
                                               vk::SampleCountFlagBits numSamples, vk::Format format,
                                               vk::ImageTiling tiling, vk::ImageUsageFlags usage,
                                               vk::MemoryPropertyFlags properties) const;
-    void transitionImageLayout(vk::Image image, vk::Format format, SwitchLayout switchLayout, uint32_t mipLevels) const;
+    void transitionImageLayout(vk::Queue queue, vk::CommandPool commandPool, vk::Image image, vk::Format format,
+                               SwitchLayout switchLayout, uint32_t mipLevels) const;
     void generateMipmaps(vk::Image image, vk::Format imageFormat, uint32_t texWidth, uint32_t texHeight,
                          uint32_t mipLevels) const;
     [[nodiscard]] vk::UniqueImageView createImageView(vk::Image image, vk::Format format,

@@ -327,17 +327,17 @@ BufferWithMemory BaseGraphics::createIndexBuffer(const Model &model) const {
 
 //TODO collect commands and async submit
 template<typename CopyCommand, typename FlushBuffer>
-void BaseGraphics::singleTimeCommand(vk::CommandPool commandPool, CopyCommand copyCommand,
+void BaseGraphics::singleTimeCommand(vk::Queue queue, vk::CommandPool commandPool, CopyCommand copyCommand,
                                      FlushBuffer flushBuffer) const {
     auto commandBuffer = createCommandBuffer(commandPool);
     commandBuffer->begin(vk::CommandBufferBeginInfo(vk::CommandBufferUsageFlagBits::eOneTimeSubmit));
     copyCommand(*commandBuffer);
     commandBuffer->end();
     flushBuffer();
-    transferQueue.submit({
+    queue.submit({
                                  vk::SubmitInfo({}, {}, {}, 1, &*commandBuffer)
                          }, {});
-    transferQueue.waitIdle();
+    queue.waitIdle();
 }
 
 vk::UniqueDescriptorSetLayout BaseGraphics::createDescriptorSetLayout() const {
@@ -358,7 +358,7 @@ void BaseGraphics::copyViaStagingBuffer(const void *src, size_t size, CopyComman
     void *data = device->mapMemory(*stagingBuffer.bufferMemory, 0, size);
     std::memcpy(data, src, size);
 
-    singleTimeCommand(*transferCommandPool, copyCommandFactory(stagingBuffer), [this, &stagingBuffer] {
+    singleTimeCommand(transferQueue, *transferCommandPool, copyCommandFactory(stagingBuffer), [this, &stagingBuffer] {
         device->flushMappedMemoryRanges({vk::MappedMemoryRange(*stagingBuffer.bufferMemory, 0, VK_WHOLE_SIZE)});
     });
     device->unmapMemory(*stagingBuffer.bufferMemory);
@@ -401,7 +401,8 @@ TextureImage BaseGraphics::createTextureImage() const {
             vk::MemoryPropertyFlagBits::eDeviceLocal
     );
 
-    transitionImageLayout(*textureImage_.image, vk::Format::eR8G8B8A8Srgb, SwitchLayout{
+    transitionImageLayout(transferQueue, *transferCommandPool, *textureImage_.image, vk::Format::eR8G8B8A8Srgb,
+                          SwitchLayout{
                                   vk::ImageLayout::eUndefined,
                                   vk::ImageLayout::eTransferDstOptimal},
                           mipLevels);
@@ -471,8 +472,8 @@ ImageWithMemory BaseGraphics::createImage(uint32_t width, uint32_t height, uint3
     };
 }
 
-void BaseGraphics::transitionImageLayout(vk::Image image, vk::Format format, SwitchLayout switchLayout,
-                                         uint32_t mipLevels) const {
+void BaseGraphics::transitionImageLayout(vk::Queue queue, vk::CommandPool commandPool, vk::Image image,
+                                         vk::Format format, SwitchLayout switchLayout, uint32_t mipLevels) const {
     vk::AccessFlags srcAccessMask;
     vk::AccessFlags dstAccessMask;
     vk::PipelineStageFlags srcStage;
@@ -531,7 +532,7 @@ void BaseGraphics::transitionImageLayout(vk::Image image, vk::Format format, Swi
                     1
             )
     );
-    singleTimeCommand(*transferCommandPool, [&barrier, srcStage, dstStage](auto t) {
+    singleTimeCommand(queue, commandPool, [&barrier, srcStage, dstStage](auto t) {
         t.pipelineBarrier(
                 srcStage, dstStage,
                 {},
@@ -640,7 +641,7 @@ void BaseGraphics::generateMipmaps(vk::Image image, vk::Format imageFormat, uint
         //TODO software mipmap generation
         throw std::runtime_error("texture image format does not support linear blitting!");
     }
-    singleTimeCommand(*graphicsCommandPool,
+    singleTimeCommand(graphicsQueue, *graphicsCommandPool,
                       [image, texWidth, texHeight, mipLevels](vk::CommandBuffer commandBuffer){
                           vk::ImageMemoryBarrier barrier(
                                   {},

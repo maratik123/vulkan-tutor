@@ -610,9 +610,11 @@ ImageWithMemory SizeDependentResources::createDepthImage() const {
             vk::MemoryPropertyFlagBits::eDeviceLocal
     );
 
-    base.transitionImageLayout(*depthImage_.image, base.depthFormat, SwitchLayout {
-            vk::ImageLayout::eUndefined, vk::ImageLayout::eDepthStencilAttachmentOptimal
-    }, 1);
+    base.transitionImageLayout(base.graphicsQueue, *base.graphicsCommandPool, *depthImage_.image, base.depthFormat,
+                               SwitchLayout {
+                                       vk::ImageLayout::eUndefined,
+                                       vk::ImageLayout::eDepthStencilAttachmentOptimal
+                               }, 1);
 
     return depthImage_;
 }
