@@ -109,20 +109,19 @@ std::vector<vk::UniqueImageView> SizeDependentResources::createSwapChainImageVie
 }
 
 vk::UniquePipeline SizeDependentResources::createGraphicsPipeline() const {
-    vk::PipelineShaderStageCreateInfo vertShaderStageCreateInfo(
-            {},
-            vk::ShaderStageFlagBits::eVertex,
-            *base.vertShaderModule,
-            "main"
-    );
-    vk::PipelineShaderStageCreateInfo fragShaderStageCreateInfo(
-            {},
-            vk::ShaderStageFlagBits::eFragment,
-            *base.fragShaderModule,
-            "main"
-    );
     std::array<vk::PipelineShaderStageCreateInfo, 2> shaderStages {
-            vertShaderStageCreateInfo, fragShaderStageCreateInfo
+            vk::PipelineShaderStageCreateInfo(
+                    {},
+                    vk::ShaderStageFlagBits::eVertex,
+                    *base.vertShaderModule,
+                    "main"
+            ),
+            vk::PipelineShaderStageCreateInfo(
+                    {},
+                    vk::ShaderStageFlagBits::eFragment,
+                    *base.fragShaderModule,
+                    "main"
+            )
     };
 
     const auto bindingDescription = so::Vertex::bindingDescription();
